@@ -1,16 +1,19 @@
 ---
 - name: Install OpenSCAP packages
+  tags: [scan, remediate]
   ansible.builtin.dnf:
     name: "{{ openscap_packages }}"
     state: present
 
 - name: Ensure OpenSCAP report directory exists
+  tags: [scan, remediate]
   ansible.builtin.file:
     path: "{{ openscap_report_dir }}"
     state: directory
     mode: "0750"
 
 - name: Run OpenSCAP compliance scan
+  tags: [scan, remediate]
   ansible.builtin.command:
     cmd: >-
       oscap xccdf eval
@@ -24,6 +27,7 @@
   failed_when: openscap_scan_result.rc not in [0, 1, 2]
 
 - name: Display scan exit code summary
+  tags: [scan, remediate]
   ansible.builtin.debug:
     msg:
       - "OpenSCAP scan completed on {{ inventory_hostname }}"
@@ -32,6 +36,7 @@
       - "Results XML: {{ openscap_report_dir }}/{{ inventory_hostname }}-results.xml"
 
 - name: Run OpenSCAP remediation
+  tags: [remediate]
   ansible.builtin.command:
     cmd: >-
       oscap xccdf eval
@@ -46,6 +51,7 @@
   when: openscap_run_remediation | bool
 
 - name: Re-run OpenSCAP scan after remediation
+  tags: [remediate]
   ansible.builtin.command:
     cmd: >-
       oscap xccdf eval
@@ -59,6 +65,7 @@
   when: openscap_run_remediation | bool
 
 - name: Display post-remediation scan summary
+  tags: [remediate]
   ansible.builtin.debug:
     msg:
       - "Post-remediation scan exit code: {{ openscap_post_scan_result.rc }}"

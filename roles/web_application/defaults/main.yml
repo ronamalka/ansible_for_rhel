@@ -6,3 +6,9 @@ web_app_packages:
 web_app_service: httpd
 web_app_firewall_service: http
 web_app_port: 80
+
+# Host stage mapping when Controller inventory lacks host_vars.
+web_app_host_stages:
+  node1: dev
+  node2: prod
+  node3: dev
