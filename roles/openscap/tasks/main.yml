@@ -50,6 +50,10 @@
   failed_when: openscap_remediate_result.rc not in [0, 1, 2]
   when: openscap_run_remediation | bool
 
+- name: Reset connection after remediation (sudo/PAM settings may have changed)
+  ansible.builtin.meta: reset_connection
+  when: openscap_run_remediation | bool
+
 - name: Re-run OpenSCAP scan after remediation
   tags: [remediate]
   ansible.builtin.command:
