@@ -37,18 +37,30 @@
 
 - name: Run OpenSCAP remediation
   tags: [remediate]
-  ansible.builtin.command:
-    cmd: >-
-      oscap xccdf eval
-      --profile {{ openscap_profile }}
-      --remediate{% for rule in openscap_skip_remediation_rules %}
-      --skip-rule {{ rule }}{% endfor %}
-      --results {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-results.xml
-      --report {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-report.html
+  ansible.builtin.shell: |
+    set -o pipefail
+    oscap xccdf eval \
+      --profile {{ openscap_profile }} \
+      --remediate \
+{% for rule in openscap_skip_remediation_rules %}
+      --skip-rule {{ rule }} \
+{% endfor %}
+      --results {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-results.xml \
+      --report {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-report.html \
       {{ openscap_content_path }}
+    oscap_rc=$?
+    printf '%s\n' '{{ openscap_workshop_sudoers_content | trim }}' > {{ openscap_workshop_sudoers_dropin }}
+    chmod 0440 {{ openscap_workshop_sudoers_dropin }}
+    visudo -cf /etc/sudoers
+    if [ "$oscap_rc" -eq 0 ] || [ "$oscap_rc" -eq 1 ] || [ "$oscap_rc" -eq 2 ]; then
+      exit 0
+    fi
+    exit "$oscap_rc"
+  args:
+    executable: /bin/bash
   register: openscap_remediate_result
-  changed_when: openscap_remediate_result.rc in [0, 2]
-  failed_when: openscap_remediate_result.rc not in [0, 1, 2]
+  changed_when: openscap_remediate_result.rc == 0
+  failed_when: openscap_remediate_result.rc != 0
   when: openscap_run_remediation | bool
 
 - name: Reset connection after remediation (sudo/PAM settings may have changed)

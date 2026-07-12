@@ -10,3 +10,7 @@ openscap_packages:
 # Skip remediations that break Ansible privilege escalation (Workshop Credential uses passwordless sudo).
 openscap_skip_remediation_rules:
   - xccdf_org.ssgproject.content_rule_sudo_remove_nopasswd
+
+openscap_workshop_sudoers_dropin: /etc/sudoers.d/90-cloud-init-users
+openscap_workshop_sudoers_content: |
+  ec2-user ALL=(ALL) NOPASSWD:ALL
