@@ -4,5 +4,6 @@
   become: true
   vars:
     openscap_run_remediation: true
+    openscap_demo_mode: true
   roles:
     - openscap

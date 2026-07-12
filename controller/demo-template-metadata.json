@@ -11,7 +11,7 @@
     },
     "13": {
       "name": "DEMO - OpenSCAP Remediate",
-      "description": "Remediate OpenSCAP findings and produce a post-remediation comparison report."
+      "description": "Remediate auto-fixable CIS controls using a demo tailored profile; stdout shows full CIS baseline (~97%) and demo profile before/after scores (target 100%)."
     },
     "14": {
       "name": "DEMO - Deploy Web Application",

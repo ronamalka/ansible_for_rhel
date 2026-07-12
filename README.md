@@ -156,14 +156,32 @@ Exit codes: `0` = pass, `1` = error, `2` = failures found (expected on first sca
 **Story:** Automatically fix compliance findings where remediations exist.
 
 ```bash
-ansible-playbook playbooks/openscap_remediate.yml
+ansible-playbook playbooks/openscap_remediate.yml --limit node2
 ```
 
 **What happens:**
-1. Runs `oscap xccdf eval --remediate` with the CIS profile
-2. Re-scans to produce a post-remediation comparison report
+1. Runs `oscap xccdf eval --remediate` against the demo tailored CIS profile (auto-remediable controls only)
+2. Parses and displays compliance scores before and after remediation
+3. Re-scans to produce a post-remediation comparison report (target: **100%** on demo profile)
 
-**Controller:** Launch **DEMO - OpenSCAP Remediate**.
+**Controller:** Launch **DEMO - OpenSCAP Remediate** with limit `node2`.
+
+#### Demo mode vs full CIS (honest presentation)
+
+| Mode | Profile | Typical score after remediate | Use when |
+|------|---------|-------------------------------|----------|
+| **Scan (template 12)** | Full CIS | ~97.4% | Show real-world CIS baseline; 11 rules need manual/disk changes |
+| **Remediate (template 13)** | Demo tailored CIS | **100%** | Show automated remediation success on achievable controls |
+
+The 11 full-CIS failures that do not change after remediate are structural or manual-only: separate `/home`, `/tmp`, `/var`, `/var/log`, `/var/log/audit`, `/var/tmp` partitions; GRUB password; root password policy; passwordless sudo (skipped for Ansible); SSH user allow-lists; SELinux daemon confinement.
+
+For the strongest before/after story on the demo profile, reset sandbox VMs or use a host that has not yet been remediated. On an already-remediated host, the demo profile may already read 100% before remediate; the job output still shows the full CIS baseline (~97%) for context.
+
+Disable demo mode (full CIS only):
+
+```bash
+ansible-playbook playbooks/openscap_remediate.yml -e openscap_demo_mode=false
+```
 
 ### Phase 4: Application Deployment (~3-5 min)
 
@@ -285,16 +303,31 @@ For a shorter demo, skip remediation or limit to a single host with `--limit nod
 |----------|---------|-------------|
 | `security_only` | `false` | Patch only security updates |
 | `reboot_after_patch` | `false` | Reboot if kernel updated |
-| `openscap_profile` | CIS | SCAP evaluation profile |
+| `openscap_profile` | CIS | Full CIS SCAP profile (scan template) |
+| `openscap_demo_mode` | `false` (scan), `true` (remediate playbook) | Use tailored auto-remediable CIS profile |
+| `openscap_demo_profile` | `xccdf_org.demo.profile_cis_workshop` | Tailored profile ID for demo mode |
+| `openscap_show_cis_baseline` | `true` | When demo mode, also scan/report full CIS score |
+| `openscap_reboot_after_remediate` | `false` | Reboot after remediate (some rules need it) |
 | `stage` | `dev` (group), `prod` (node2) | Environment label for web content |
 | `dev_content` | See group_vars | Development page body text |
 | `prod_content` | See group_vars | Production page body text |
 
 ## Troubleshooting
 
+### Sandbox recovery (OpenTLC)
+
+If **OpenSCAP Remediate** ran on all `web` hosts before the skip rules were in Git, `ec2-user` may lose passwordless sudo (`sudo -n` fails; `/etc/sudoers.d/90-cloud-init-users` is gone). SSH from the bastion still works; Ansible jobs fail at **Gathering Facts** with `Missing sudo password`.
+
+1. **Reset or rebuild** the sandbox RHEL VMs from the OpenTLC lab environment (no in-band recovery without root).
+2. On the Controller, **sync** RHEL Demo Project (id 10) and confirm **Workshop Credential** (id 4) includes the bastion SSH private key.
+3. Re-run demos with API/UI **limit** `node1` on templates 12–15 (`ask_limit_on_launch` enabled). For API launches use `{"limit": "node1"}` plus job tags `scan` / `remediate` where applicable.
+4. Do not store lab passwords in Git; use the lab-provided credentials only on the bastion and Controller.
+
+
 | Issue | Resolution |
 |-------|------------|
 | SSH connection refused | Verify `~/.ssh/4mrmxkey.pem` exists on bastion |
+| `Missing sudo password` on RHEL nodes | CIS remediate removed `/etc/sudoers.d/90-cloud-init-users`; restore VMs via **OpenTLC sandbox reset** (cannot be fixed over SSH without a root password). After reset, run OpenSCAP remediate with **limit `node1`** only; repo skips `sudo_remove_nopasswd`. |
 | OpenSCAP timeout | Increase job template timeout to 3600s; use `--limit node1` |
 | OpenSCAP exit code 2 | Expected on first scan — failures found, not an Ansible error |
 | Apache not reachable | Check firewalld: `firewall-cmd --list-services` |

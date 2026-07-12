@@ -123,7 +123,10 @@ curl -sk -u "admin:${CONTROLLER_PASSWORD}" -X PATCH -H 'Content-Type: applicatio
 | Limit | `web` |
 | Privilege Escalation | Enabled |
 | Job Tags | `remediate` |
+| Ask limit on launch | Yes (use `node2` for demo; `node1` for faster runs) |
 | Timeout | 3600 |
+
+The remediate playbook enables `openscap_demo_mode: true` by default. Job stdout shows **full CIS baseline** (~97%) plus **demo profile** before/after scores (target 100%). Override with extra var `openscap_demo_mode: false` for full CIS only.
 
 ### 4. Deploy Web Application
 
@@ -135,6 +138,7 @@ curl -sk -u "admin:${CONTROLLER_PASSWORD}" -X PATCH -H 'Content-Type: applicatio
 | Playbook | `playbooks/deploy_application.yml` |
 | Credentials | Workshop Credential |
 | Limit | `web` |
+| Ask limit on launch | Yes (use `node1` for faster demos) |
 | Privilege Escalation | Enabled |
 | Extra Variables | See below |
 
@@ -162,6 +166,7 @@ prod_content: "Production content deployed by Ansible"
 | Playbook | `playbooks/verify_application.yml` |
 | Credentials | Workshop Credential |
 | Limit | `web` |
+| Ask limit on launch | Yes (use `node1` for faster demos) |
 | Privilege Escalation | Disabled |
 
 ## Existing Controller Resources

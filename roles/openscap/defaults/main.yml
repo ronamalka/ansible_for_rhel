@@ -7,6 +7,16 @@ openscap_run_remediation: false
 openscap_packages:
   - openscap-scanner
   - scap-security-guide
+
+# Demo mode uses a tailored CIS profile that excludes rules requiring disk
+# reprovisioning, GRUB/root passwords, or workshop passwordless sudo.
+openscap_demo_mode: false
+openscap_demo_profile: xccdf_org.demo.profile_cis_workshop
+openscap_demo_tailoring_src: demo-cis-tailoring.xml
+openscap_demo_tailoring_path: "{{ openscap_report_dir }}/demo-cis-tailoring.xml"
+openscap_show_cis_baseline: true
+openscap_reboot_after_remediate: false
+
 # Skip remediations that break Ansible privilege escalation (Workshop Credential uses passwordless sudo).
 openscap_skip_remediation_rules:
   - xccdf_org.ssgproject.content_rule_sudo_remove_nopasswd

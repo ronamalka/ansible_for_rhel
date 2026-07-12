@@ -12,12 +12,54 @@
     state: directory
     mode: "0750"
 
-- name: Run OpenSCAP compliance scan
+- name: Configure OpenSCAP evaluation profile
+  tags: [scan, remediate]
+  ansible.builtin.set_fact:
+    openscap_effective_profile: "{{ openscap_demo_profile if openscap_demo_mode | bool else openscap_profile }}"
+    openscap_use_tailoring: "{{ openscap_demo_mode | bool }}"
+    openscap_tailoring_arg: "{{ '--tailoring-file ' + openscap_demo_tailoring_path if openscap_demo_mode | bool else '' }}"
+
+- name: Deploy demo CIS tailoring file
+  tags: [scan, remediate]
+  ansible.builtin.copy:
+    src: "{{ openscap_demo_tailoring_src }}"
+    dest: "{{ openscap_demo_tailoring_path }}"
+    mode: "0644"
+  when: openscap_demo_mode | bool
+
+- name: Run CIS baseline scan for comparison
   tags: [scan, remediate]
   ansible.builtin.command:
     cmd: >-
       oscap xccdf eval
       --profile {{ openscap_profile }}
+      --results {{ openscap_report_dir }}/{{ inventory_hostname }}-cis-baseline-results.xml
+      --report {{ openscap_report_dir }}/{{ inventory_hostname }}-cis-baseline-report.html
+      {{ openscap_content_path }}
+  register: openscap_cis_baseline_scan
+  changed_when: openscap_cis_baseline_scan.rc in [0, 2]
+  failed_when: openscap_cis_baseline_scan.rc not in [0, 1, 2]
+  when:
+    - openscap_demo_mode | bool
+    - openscap_show_cis_baseline | bool
+
+- name: Parse CIS baseline compliance score
+  tags: [scan, remediate]
+  ansible.builtin.include_tasks: parse_score.yml
+  vars:
+    openscap_score_results_path: "{{ openscap_report_dir }}/{{ inventory_hostname }}-cis-baseline-results.xml"
+    openscap_score_fact_name: openscap_cis_baseline_score
+  when:
+    - openscap_demo_mode | bool
+    - openscap_show_cis_baseline | bool
+
+- name: Run OpenSCAP compliance scan
+  tags: [scan, remediate]
+  ansible.builtin.command:
+    cmd: >-
+      oscap xccdf eval
+      --profile {{ openscap_effective_profile }}
+      {{ openscap_tailoring_arg }}
       --results {{ openscap_report_dir }}/{{ inventory_hostname }}-results.xml
       --report {{ openscap_report_dir }}/{{ inventory_hostname }}-report.html
       --oval-results
@@ -26,11 +68,21 @@
   changed_when: openscap_scan_result.rc in [0, 2]
   failed_when: openscap_scan_result.rc not in [0, 1, 2]
 
+- name: Parse scan compliance score
+  tags: [scan, remediate]
+  ansible.builtin.include_tasks: parse_score.yml
+  vars:
+    openscap_score_results_path: "{{ openscap_report_dir }}/{{ inventory_hostname }}-results.xml"
+    openscap_score_fact_name: openscap_scan_score
+
 - name: Display scan exit code summary
   tags: [scan, remediate]
   ansible.builtin.debug:
     msg:
       - "OpenSCAP scan completed on {{ inventory_hostname }}"
+      - "Profile: {{ openscap_effective_profile }}{% if openscap_demo_mode | bool %} (demo tailored CIS){% else %} (full CIS){% endif %}"
+      - "Compliance score: {{ '%.2f' | format(openscap_scan_score) }}%"
+      - "{% if openscap_cis_baseline_score is defined %}Full CIS baseline score: {{ '%.2f' | format(openscap_cis_baseline_score) }}% (11 rules need manual/disk changes){% endif %}"
       - "Exit code: {{ openscap_scan_result.rc }} (0=pass, 1=error, 2=failures found)"
       - "HTML report: {{ openscap_report_dir }}/{{ inventory_hostname }}-report.html"
       - "Results XML: {{ openscap_report_dir }}/{{ inventory_hostname }}-results.xml"
@@ -39,7 +91,14 @@
   tags: [remediate]
   ansible.builtin.shell: |
     set -o pipefail
-    oscap xccdf eval       --profile {{ openscap_profile }}       --remediate {{ openscap_skip_remediation_rules | map('regex_replace', '^(.*)$', '--skip-rule \\1') | join(' ') }}       --results {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-results.xml       --report {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-report.html       {{ openscap_content_path }}
+    oscap xccdf eval \
+      --profile {{ openscap_effective_profile }} \
+      {{ openscap_tailoring_arg }} \
+      --remediate \
+      {{ openscap_skip_remediation_rules | map('regex_replace', '^(.*)$', '--skip-rule \\1') | join(' ') }} \
+      --results {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-results.xml \
+      --report {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-report.html \
+      {{ openscap_content_path }}
     oscap_rc=$?
     printf '%s\n' '{{ openscap_workshop_sudoers_content | trim }}' > {{ openscap_workshop_sudoers_dropin }}
     chmod 0440 {{ openscap_workshop_sudoers_dropin }}
@@ -55,6 +114,14 @@
   failed_when: openscap_remediate_result.rc != 0
   when: openscap_run_remediation | bool
 
+- name: Reboot host after remediation when requested
+  tags: [remediate]
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+  when:
+    - openscap_run_remediation | bool
+    - openscap_reboot_after_remediate | bool
+
 - name: Reset connection after remediation (sudo/PAM settings may have changed)
   ansible.builtin.meta: reset_connection
   when: openscap_run_remediation | bool
@@ -64,7 +131,8 @@
   ansible.builtin.command:
     cmd: >-
       oscap xccdf eval
-      --profile {{ openscap_profile }}
+      --profile {{ openscap_effective_profile }}
+      {{ openscap_tailoring_arg }}
       --results {{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-results.xml
       --report {{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-report.html
       {{ openscap_content_path }}
@@ -73,10 +141,24 @@
   failed_when: openscap_post_scan_result.rc not in [0, 1, 2]
   when: openscap_run_remediation | bool
 
+- name: Parse post-remediation compliance score
+  tags: [remediate]
+  ansible.builtin.include_tasks: parse_score.yml
+  vars:
+    openscap_score_results_path: "{{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-results.xml"
+    openscap_score_fact_name: openscap_post_remediate_score
+  when: openscap_run_remediation | bool
+
 - name: Display post-remediation scan summary
   tags: [remediate]
   ansible.builtin.debug:
     msg:
+      - "Post-remediation scan on {{ inventory_hostname }}"
+      - "Profile: {{ openscap_effective_profile }}{% if openscap_demo_mode | bool %} (demo tailored CIS){% else %} (full CIS){% endif %}"
+      - "Compliance score before remediation: {{ '%.2f' | format(openscap_scan_score) }}%"
+      - "Compliance score after remediation: {{ '%.2f' | format(openscap_post_remediate_score) }}%"
+      - "Score change: {{ '%+.2f' | format(openscap_post_remediate_score - openscap_scan_score) }} percentage points"
+      - "{% if openscap_cis_baseline_score is defined %}Full CIS baseline (context): {{ '%.2f' | format(openscap_cis_baseline_score) }}%{% endif %}"
       - "Post-remediation scan exit code: {{ openscap_post_scan_result.rc }}"
       - "Report: {{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-report.html"
   when: openscap_run_remediation | bool

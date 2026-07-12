@@ -1,0 +1,15 @@
+---
+- name: Extract OpenSCAP compliance score from results XML
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep 'score system' "{{ openscap_score_results_path }}" | tail -1 \
+      | sed -n 's/.*>\([0-9.]*\)<\/score>/\1/p'
+  args:
+    executable: /bin/bash
+  register: openscap_score_cmd
+  changed_when: false
+  failed_when: openscap_score_cmd.stdout | length == 0
+
+- name: Set parsed OpenSCAP score fact
+  ansible.builtin.set_fact:
+    "{{ openscap_score_fact_name }}": "{{ openscap_score_cmd.stdout | float }}"
