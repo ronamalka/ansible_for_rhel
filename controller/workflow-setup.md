@@ -24,6 +24,16 @@ flowchart LR
 | Workflow job template | **DEMO - RHEL Operations Pipeline** (id: 16) |
 | Inventory | Workshop Inventory (id: 2) |
 | Node chain | Job templates 11 → 12 → 13 → 14 → 15 (On Success) |
+| Self-service | Exposed to `demo-user` via `configure-self-service.sh` |
+
+### Self-service launch
+
+The workflow is available in the self-service catalog alongside individual job templates. Presenters can launch the full pipeline from:
+
+- **Controller:** sign in as `demo-user` → **Automation Execution → Templates**
+- **Automation Portal:** same credentials when the portal component is deployed
+
+See `controller/self-service-setup.md` for RBAC setup and verification.
 
 ### Create the Workflow
 

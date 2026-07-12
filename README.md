@@ -57,7 +57,12 @@ ansible_for_rhel/
 │   └── web_application/
 ├── controller/
 │   ├── job-templates.md               # AAP job template config
-│   └── workflow-setup.md              # Workflow visualizer guide
+│   ├── workflow-setup.md              # Workflow visualizer guide
+│   ├── self-service-setup.md          # Self-service portal setup guide
+│   ├── configure-demo-job-templates.sh
+│   ├── configure-self-service.sh      # Idempotent self-service RBAC script
+│   ├── demo-template-metadata.json    # Template descriptions for portal
+│   └── patch-rhel-survey.json
 └── monitoring/
     └── automation-dashboard.md        # Dashboard demo script
 ```
@@ -208,6 +213,38 @@ Detailed configuration is in:
 
 - `controller/job-templates.md` — five job templates with surveys
 - `controller/workflow-setup.md` — chained workflow visualizer
+- `controller/self-service-setup.md` — self-service portal and demo-user RBAC
+
+### Initial Demo Setup Checklist
+
+| Step | Action | Script / Doc |
+|------|--------|--------------|
+| 1 | Sync **RHEL Demo Project** from GitHub | [job-templates.md](controller/job-templates.md) |
+| 2 | Create DEMO job templates (11–15) | [job-templates.md](controller/job-templates.md) |
+| 3 | Attach Workshop Credential | `controller/configure-demo-job-templates.sh` |
+| 4 | Configure Patch survey | `controller/patch-rhel-survey.json` |
+| 5 | Create workflow pipeline (16) | [workflow-setup.md](controller/workflow-setup.md) |
+| 6 | Configure self-service RBAC | `controller/configure-self-service.sh` |
+| 7 | Verify demo-user template access | [self-service-setup.md](controller/self-service-setup.md) |
+
+### Self-Service Portal
+
+Non-admin users can launch DEMO automations without full controller access.
+
+| Mode | URL | Notes |
+|------|-----|-------|
+| Controller templates | `https://ansible-1.4mrmx.sandbox3261.opentlc.com/#/templates` | Works on controller-only sandboxes |
+| Automation Portal | `https://<portal-host>/` | Requires separate portal deployment |
+
+**Demo user:** `demo-user` / `<demo-user-password>` (set via `DEMO_USER_PASSWORD` during setup — not stored in Git)
+
+```bash
+export CONTROLLER_PASSWORD='<controller-admin-password>'
+export DEMO_USER_PASSWORD='<demo-user-password>'
+./controller/configure-self-service.sh
+```
+
+All six DEMO templates (patch, OpenSCAP scan/remediate, deploy, verify, and the full workflow pipeline) are exposed with Execute permission. See `controller/self-service-setup.md` for verification steps and automation portal deployment.
 
 ### Workflow Overview
 
@@ -225,6 +262,7 @@ The sandbox already has:
 - **RHEL Demo Project** (id: 10) synced from `https://github.com/ronamalka/ansible_for_rhel.git`
 - **DEMO job templates** (ids 11–15) for patch, OpenSCAP, deploy, and verify playbooks
 - **DEMO - RHEL Operations Pipeline** workflow (id: 16)
+- **Self-service** demo user `demo-user` with Execute on DEMO templates (see `controller/self-service-setup.md`)
 - **Ansible official demo project** pointing to RedHatGov/product-demos
 - **SECURITY / Hardening** job template (`linux/hardening.yml`)
 

@@ -44,6 +44,18 @@ export CONTROLLER_PASSWORD='<controller-admin-password>'
 
 Without this step, jobs connect as `root` with no key and fail with `Permission denied (publickey,...)`.
 
+## Self-service access
+
+After templates exist, configure the demo self-service user and RBAC:
+
+```bash
+export CONTROLLER_PASSWORD='<controller-admin-password>'
+export DEMO_USER_PASSWORD='<demo-user-password>'
+./controller/configure-self-service.sh
+```
+
+See `controller/self-service-setup.md` for portal deployment, verification, and the full initial setup checklist.
+
 ## Job Templates
 
 Create each template via **Automation Execution → Templates → Create template → Create job template**.
@@ -163,6 +175,7 @@ The environment already includes:
 | Project | **RHEL Demo Project** (id: 10) → `https://github.com/ronamalka/ansible_for_rhel.git` |
 | Job Template | SECURITY / Hardening → `linux/hardening.yml` |
 | Job Templates | DEMO - Patch RHEL Servers (11), OpenSCAP Scan (12), OpenSCAP Remediate (13), Deploy Web Application (14), Verify Web Application (15) |
+| Self-service | demo-user with Execute on templates 11–16 (see `self-service-setup.md`) |
 
 You can keep the existing hardening template for comparison alongside the DEMO templates from this repo.
 

@@ -1,0 +1,31 @@
+{
+  "label": "demo-self-service",
+  "job_templates": {
+    "11": {
+      "name": "DEMO - Patch RHEL Servers",
+      "description": "Apply package updates to RHEL web servers. Survey options: security-only patching and optional reboot."
+    },
+    "12": {
+      "name": "DEMO - OpenSCAP Scan",
+      "description": "Run CIS OpenSCAP compliance scan on RHEL web servers and generate HTML/XML reports."
+    },
+    "13": {
+      "name": "DEMO - OpenSCAP Remediate",
+      "description": "Remediate OpenSCAP findings and produce a post-remediation comparison report."
+    },
+    "14": {
+      "name": "DEMO - Deploy Web Application",
+      "description": "Deploy Apache httpd with environment-specific content on RHEL web servers."
+    },
+    "15": {
+      "name": "DEMO - Verify Web Application",
+      "description": "Verify deployed web applications return HTTP 200 with expected content."
+    }
+  },
+  "workflow_job_templates": {
+    "16": {
+      "name": "DEMO - RHEL Operations Pipeline",
+      "description": "End-to-end RHEL operations pipeline: patch, OpenSCAP scan, remediate, deploy web app, and verify."
+    }
+  }
+}
