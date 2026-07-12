@@ -172,6 +172,18 @@ if [[ "${code}" != "204" && "${code}" != "200" ]]; then
   echo "Note: org member role returned HTTP ${code} (may already be assigned)"
 fi
 
+echo "=== Gateway organization membership (required for portal OAuth sign-in) ==="
+gateway_user_id="$(gateway_oauth_api_get "/api/gateway/v1/users/?username=${DEMO_USER}" | python3 -c "
+import sys, json
+results = json.load(sys.stdin).get('results', [])
+print(results[0]['id'] if results else '')
+")"
+if [[ -n "${gateway_user_id}" ]]; then
+  ensure_gateway_org_member "${gateway_user_id}" "${ORGANIZATION_ID}"
+else
+  echo "Warning: Gateway user ${DEMO_USER} not found; portal login may fail until org membership is assigned" >&2
+fi
+
 echo "=== Granting Execute on DEMO job templates ==="
 for template_id in ${DEMO_TEMPLATE_IDS}; do
   role_id="$(get_execute_role_id "job_templates" "${template_id}")"
@@ -295,4 +307,5 @@ if [[ -n "${PORTAL_OAUTH_CLIENT_ID}" ]]; then
 else
   echo "Portal OAUTH_CLIENT_ID: set after Gateway OAuth app exists (see controller/self-service-setup.md)" >&2
 fi
-echo "Automation portal: deploy with Gateway client_id (Controller OAuth app is separate)"
+echo "Automation portal: deploy with Gateway client_id; OAUTH_CLIENT_SECRET from ${AAP_GATEWAY_OAUTH_CACHE} if app was just created"
+echo "Set AAP_GATEWAY_TOKEN or let deploy script create a Gateway API token for secrets-rhaap-portal aap-token"

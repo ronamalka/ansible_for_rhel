@@ -129,7 +129,7 @@ curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |
 ```bash
 export AAP_HOST_URL="https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com"
 export OAUTH_CLIENT_ID="<from AAP OAuth application>"
-export OAUTH_CLIENT_SECRET=""   # public OAuth client — leave empty
+export OAUTH_CLIENT_SECRET=""   # leave empty when using configure-self-service cache file
 export AAP_TOKEN="<controller-token>"
 ./controller/deploy-self-service-portal.sh
 ```

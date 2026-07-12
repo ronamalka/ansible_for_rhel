@@ -16,9 +16,11 @@ AAP_HOST_URL="${AAP_HOST_URL:-https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox34
 CONTROLLER="${CONTROLLER:-https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
 OAUTH_APP_NAME="${OAUTH_APP_NAME:-Ansible Automation Portal}"
 OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-}"
-# Gateway public OAuth apps reject token exchange if client_secret is sent (invalid_client).
+# Confidential Gateway OAuth app; client_secret only available at create (see gateway-oauth.lib.sh cache).
 OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-}"
-AAP_TOKEN="${AAP_TOKEN:?Set AAP_TOKEN (controller token with write access)}"
+# Must authenticate to /api/gateway/v1/* (Controller tokens are not accepted).
+AAP_GATEWAY_TOKEN="${AAP_GATEWAY_TOKEN:-}"
+AAP_TOKEN="${AAP_TOKEN:-}"
 CONTROLLER_TOKEN="${CONTROLLER_TOKEN:-${AAP_TOKEN}}"
 OAUTH_APP_ID="${OAUTH_APP_ID:-1}"
 REPAIR_APP_CONFIG="${REPAIR_APP_CONFIG:-0}"
@@ -128,6 +130,21 @@ helm repo update openshift-helm-charts
 
 echo "=== OpenShift project: ${OCP_NAMESPACE} ==="
 oc get project "${OCP_NAMESPACE}" >/dev/null 2>&1 || oc new-project "${OCP_NAMESPACE}"
+
+read_gateway_oauth_client_secret >/dev/null || true
+OAUTH_CLIENT_SECRET="$(read_gateway_oauth_client_secret 2>/dev/null || true)"
+if [[ -z "${OAUTH_CLIENT_SECRET}" ]]; then
+  echo "Set OAUTH_CLIENT_SECRET or run configure-self-service.sh to create ${AAP_GATEWAY_OAUTH_CACHE}" >&2
+  exit 1
+fi
+if [[ -z "${AAP_TOKEN}" ]]; then
+  if [[ -n "${AAP_GATEWAY_TOKEN}" ]]; then
+    AAP_TOKEN="${AAP_GATEWAY_TOKEN}"
+  else
+    echo "=== Creating Gateway API token for portal catalog sync ===" >&2
+    AAP_TOKEN="$(ensure_gateway_catalog_token "Portal catalog sync")" || exit 1
+  fi
+fi
 
 echo "=== Secret: secrets-rhaap-portal ==="
 oc delete secret secrets-rhaap-portal -n "${OCP_NAMESPACE}" --ignore-not-found
