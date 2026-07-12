@@ -1,0 +1,24 @@
+{
+  "name": "Patch RHEL Servers",
+  "description": "Options for patching RHEL web servers",
+  "spec": [
+    {
+      "question_name": "Security updates only?",
+      "question_description": "When enabled, only security-related packages are updated.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "security_only",
+      "choices": ["false", "true"],
+      "default": "false"
+    },
+    {
+      "question_name": "Reboot after patching?",
+      "question_description": "Reboot hosts when kernel or other updates require it (needs-restarting -r).",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "reboot_after_patch",
+      "choices": ["false", "true"],
+      "default": "false"
+    }
+  ]
+}

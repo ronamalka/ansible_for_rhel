@@ -59,14 +59,30 @@ Create each template via **Automation Execution → Templates → Create templat
 | Credentials | Workshop Credential |
 | Limit | `web` |
 | Privilege Escalation | Enabled |
-| Extra Variables | `security_only: false` |
+| Extra Variables | `security_only: false` (fallback; survey overrides at launch) |
+| Survey enabled | Yes (configured on controller, template id 11) |
 
-**Optional survey questions:**
+**Survey questions** (shown at launch; values are passed as extra vars):
 
-| Question | Variable | Type | Default |
-|----------|----------|------|---------|
-| Security updates only? | `security_only` | Multiple Choice (true/false) | false |
-| Reboot after patching? | `reboot_after_patch` | Multiple Choice (true/false) | false |
+| Label | Variable | Type | Choices | Default |
+|-------|----------|------|---------|---------|
+| Security updates only? | `security_only` | Multiple Choice | `false`, `true` | `false` |
+| Reboot after patching? | `reboot_after_patch` | Multiple Choice | `false`, `true` | `false` |
+
+Survey answers are strings (`"true"` / `"false"`). The playbook maps them with `| default(false)` and the role evaluates them with `| bool`, so choosing **true** for reboot runs `ansible.builtin.reboot` only when `needs-restarting -r` reports a reboot is required.
+
+Configure or update the survey via API:
+
+```bash
+export CONTROLLER_PASSWORD='<controller-admin-password>'
+curl -sk -u "admin:${CONTROLLER_PASSWORD}" -X POST -H 'Content-Type: application/json' \
+  "https://ansible-1.4mrmx.sandbox3261.opentlc.com/api/v2/job_templates/11/survey_spec/" \
+  -d @controller/patch-rhel-survey.json
+
+curl -sk -u "admin:${CONTROLLER_PASSWORD}" -X PATCH -H 'Content-Type: application/json' \
+  "https://ansible-1.4mrmx.sandbox3261.opentlc.com/api/v2/job_templates/11/" \
+  -d '{"survey_enabled": true}'
+```
 
 ### 2. OpenSCAP Compliance Scan
 
