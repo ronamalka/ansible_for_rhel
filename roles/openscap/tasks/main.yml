@@ -41,7 +41,8 @@
     cmd: >-
       oscap xccdf eval
       --profile {{ openscap_profile }}
-      --remediate
+      --remediate{% for rule in openscap_skip_remediation_rules %}
+      --skip-remediation {{ rule }}{% endfor %}
       --results {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-results.xml
       --report {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-report.html
       {{ openscap_content_path }}

@@ -7,3 +7,6 @@ openscap_run_remediation: false
 openscap_packages:
   - openscap-scanner
   - scap-security-guide
+# Skip remediations that break Ansible privilege escalation (Workshop Credential uses passwordless sudo).
+openscap_skip_remediation_rules:
+  - xccdf_org.ssgproject.content_rule_sudo_remove_nopasswd
