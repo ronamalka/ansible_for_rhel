@@ -4,9 +4,9 @@ metadata:
   name: demo-patch-rhel-package-summary
   title: DEMO - Patch RHEL Servers (with package summary)
   description: >-
-    Patch RHEL web servers and show per-node package changes in the portal
-    output after the job completes. Uses the same Controller job template as
-    the auto-generated Patch RHEL tile.
+    Patch RHEL web servers and stream per-node package changes into the portal
+    launch step log. Uses the same Controller job template as the auto-generated
+    Patch RHEL tile.
   tags:
     - demo-self-service
     - ansible
@@ -50,19 +50,6 @@ spec:
             security_only: ${{ parameters.security_only }}
             reboot_after_patch: ${{ parameters.reboot_after_patch }}
 
-    - id: fetch-stdout
-      name: Fetch patch job output
-      action: http:backstage:request
-      input:
-        method: GET
-        path: /proxy/aap-gateway/api/controller/v2/jobs/${{ steps['launch-job'].output.data.id }}/stdout/
-        params:
-          format: txt
-        headers:
-          Authorization: Bearer ${{ secrets.aapToken }}
-        timeout: 120000
-        logRequestPath: false
-
   output:
     text:
       - title: Patch job completed
@@ -70,12 +57,8 @@ spec:
           **Job ID:** ${{ steps['launch-job'].output.data.id }}
           **Status:** ${{ steps['launch-job'].output.data.status }}
 
-          Per-node package changes appear in the summary block below (also visible in Controller job stdout).
-      - title: Per-node package changes
-        content: |
-          ```
-          ${{ steps['fetch-stdout'].output.body }}
-          ```
+          Per-node package changes were streamed in the **Create Task** step log above
+          (`DEMO_PATCH_PORTAL` lines and the `DEMO PATCH PACKAGE SUMMARY` block).
     links:
       - title: View full job in Ansible Automation Platform
         url: ${{ steps['launch-job'].output.data.url }}

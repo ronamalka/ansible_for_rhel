@@ -346,18 +346,56 @@ oc exec -n rhaap-portal redhat-rhaap-portal-postgresql-0 -- \
 
 Expected: **15** rows.
 
-## Portal patch job output (per-node packages)
+## Portal job output in the launch step log
 
-Auto-generated portal templates (synced from Controller job templates) use the `rhaap:launch-job-template` action. During **Create Task**, the live scaffolder log shows only high-level status:
+Auto-generated portal templates (synced from Controller job templates) use `rhaap:launch-job-template`. Stock portal 2.2 only logs job ID and final status during **Create Task** — not per-host Ansible output.
+
+Custom summary templates use a **single** `rhaap:launch-job-template` step (no `fetch-stdout`, `http:backstage:request`, or `fetch:plain`). Per-host details stream into the launch step log when `configure-portal-launch-logging.sh` patches the scaffolder action to poll job stdout and emit `DEMO_*_PORTAL` marker lines.
+
+### rhaap scaffolder actions (portal 2.2)
+
+Registered by `ansible-plugin-scaffolder-backend-module-backstage-rhaap`:
+
+| Action | Purpose | Key inputs | Output |
+|--------|---------|------------|--------|
+| `rhaap:launch-job-template` | Launch and wait for a Controller job template | `token`, `values.template`, `values.extraVariables`, optional `waitForCompletion` (default `true`) | `data.id`, `data.status`, `data.url` |
+| `rhaap:create-job-template` | Create a job template | `token`, `values` | `data` record |
+| `rhaap:create-project` | Create a project | `token`, `values` | `data` record |
+| `rhaap:create-execution-environment` | Create an EE | `token`, `values` | `data` record |
+| `rhaap:clean-up` | Delete demo resources | `token`, `values` | — |
+| `ansible:content-create` | Scaffold Ansible collection/playbook | config-driven | — |
+
+`rhaap:launch-job-template` does **not** expose `showStdout`, `logOutput`, `pollEvents`, or `waitAndLog` template inputs. The bundled `AAPClient.launchJobTemplate()` can parse stdout `"msg"` fields, but the stock scaffolder action calls `launchJobTemplateNoWait()` + status polling only. The launch-logging patch adds incremental stdout polling during the wait loop.
+
+### Enable launch-step stdout streaming (once per portal)
+
+On the bastion:
+
+```bash
+./controller/configure-portal-launch-logging.sh
+```
+
+This adds an init container that patches `aapLaunchJobTemplate.cjs.js` after dynamic plugins install. Idempotent across pod restarts.
+
+### Example launch step log (patch template)
 
 ```
 Beginning step DEMO - Patch RHEL Servers
-Job launched with ID: 49
-Job 49 completed with status: successful
+Job launched with ID: 92
+Waiting for result of the executed job template (job ID: 92).
+Job 92 status: running
+DEMO_PATCH_PORTAL | host=node1 | packages=openssl-libs
+DEMO_PATCH_PORTAL | host=node2 | packages=none
+===== DEMO PATCH PACKAGE SUMMARY (portal) =====
+node1: openssl-libs
+node2: none
+===== END DEMO PATCH PACKAGE SUMMARY (portal) =====
+Job 92 status: successful
+Job 92 completed with status: successful
 Finished step DEMO - Patch RHEL Servers
 ```
 
-Ansible `debug` output from the playbook appears in **Controller job stdout**, not in that live log. The auto-generated template **output** page shows job ID, status, and an AAP link — not package names.
+## Portal patch job output (per-node packages)
 
 ### Approach
 
@@ -365,20 +403,10 @@ Ansible `debug` output from the playbook appears in **Controller job stdout**, n
 |-------|----------------|
 | `roles/rhel_patching` | Per-host banners plus `DEMO_PATCH_PORTAL` marker lines; sets `rhel_patching_updated_package_names` |
 | `playbooks/patch_rhel.yml` | Final play on `web` (run_once) prints `DEMO PATCH PACKAGE SUMMARY (portal)` block for all `web` hosts |
-| Custom portal template | `controller/portal-templates/patch-rhel-package-summary.yaml` — launches template 44, fetches job stdout via `http:backstage:request` + AAP Gateway proxy, displays it in portal **output** |
+| Custom portal template | `controller/portal-templates/patch-rhel-package-summary.yaml` — single `rhaap:launch-job-template` step for template 44 |
+| Launch-logging patch | `configure-portal-launch-logging.sh` streams `DEMO_*` lines into the scaffolder step log |
 
-### Register the package-summary portal template (once per portal)
-
-See **Register custom portal templates** under [Portal deploy job output](#portal-deploy-job-output-per-node-details) — one catalog import registers patch, deploy, and verify summary templates.
-
-Presenters launch **DEMO - Patch RHEL Servers (with package summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
-
-```
-===== DEMO PATCH PACKAGE SUMMARY (portal) =====
-node1: openssl-libs, kernel-core
-node2: none
-===== END DEMO PATCH PACKAGE SUMMARY (portal) =====
-```
+Presenters launch **DEMO - Patch RHEL Servers (with package summary)** instead of the auto-generated tile. Per-node package names appear in the **Create Task** log during the launch step.
 
 ## Portal deploy job output (per-node details)
 
@@ -390,14 +418,14 @@ Auto-generated **Deploy Web Application** portal templates show the same high-le
 |-------|----------------|
 | `roles/web_application` | Per-host banners plus `DEMO_DEPLOY_PORTAL` marker lines; sets `web_app_deploy_*` facts (packages, stage, services, URL, content) |
 | `playbooks/deploy_application.yml` | Final play on `web` (run_once) prints `DEMO DEPLOY SUMMARY (portal)` block for all `web` hosts |
-| Custom portal template | `controller/portal-templates/deploy-web-app-summary.yaml` — launches template 47, fetches job stdout via `http:backstage:request` + AAP Gateway proxy, displays it in portal **output** |
+| Custom portal template | `controller/portal-templates/deploy-web-app-summary.yaml` — single `rhaap:launch-job-template` step for template 47 |
 
 ### Register custom portal templates (once per portal)
 
-1. On the bastion, configure the AAP Gateway proxy for stdout fetch (once per portal):
+1. On the bastion, enable launch-step stdout streaming:
 
    ```bash
-   ./controller/configure-portal-aap-proxy.sh
+   ./controller/configure-portal-launch-logging.sh
    ```
 
 2. Sign in to the portal as an AAP administrator.
@@ -409,9 +437,9 @@ Auto-generated **Deploy Web Application** portal templates show the same high-le
 5. Click **Analyze** → **Import** (imports patch, deploy, and verify summary templates).
 6. Grant `demo-portal-users` catalog read on the new templates (or rely on tag filter if configured).
 
-After updating template YAML in Git, re-import or wait for catalog refresh (~30 minutes). Templates use `http:backstage:request` (not `fetch:plain` — that action does not support auth headers or return response bodies).
+After updating template YAML in Git, re-import or wait for catalog refresh (~30 minutes). Templates use only `rhaap:launch-job-template` — no separate stdout fetch step.
 
-Presenters launch **DEMO - Deploy Web Application (with deploy summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
+Presenters launch **DEMO - Deploy Web Application (with deploy summary)** instead of the auto-generated tile. Per-node deploy details appear in the **Create Task** launch step log:
 
 ```
 ===== DEMO DEPLOY SUMMARY (portal) =====
@@ -431,9 +459,9 @@ Auto-generated **Verify Web Application** portal templates show the same high-le
 |-------|----------------|
 | `playbooks/verify_application.yml` | Per-host URI check plus `DEMO_VERIFY_PORTAL` marker lines; sets `web_verify_*` facts (url, status, stage, content) |
 | `playbooks/verify_application.yml` | Final play on `web` (run_once) prints `DEMO VERIFY SUMMARY (portal)` block for all `web` hosts |
-| Custom portal template | `controller/portal-templates/verify-web-app-summary.yaml` — launches template 48, fetches job stdout via `http:backstage:request` + AAP Gateway proxy, displays it in portal **output** |
+| Custom portal template | `controller/portal-templates/verify-web-app-summary.yaml` — single `rhaap:launch-job-template` step for template 48 |
 
-Presenters launch **DEMO - Verify Web Application (with verify summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
+Presenters launch **DEMO - Verify Web Application (with verify summary)** instead of the auto-generated tile. Per-node verify checks appear in the **Create Task** launch step log:
 
 ```
 ===== DEMO VERIFY SUMMARY (portal) =====
@@ -465,10 +493,10 @@ On the bastion (with `CONTROLLER_TOKEN` or `CONTROLLER_PASSWORD` set):
 | Portal `CrashLoopBackOff` / `YAMLParseError duplicate production` | Do not merge a second `catalog.providers.rhaap.production` block; run `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 | Portal chart missing | Download from Red Hat Customer Portal or use OpenShift Helm catalog with registry auth |
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |
-| Portal shows job ID only, no packages | Use custom template **DEMO - Patch RHEL Servers (with package summary)**; auto-generated templates do not fetch stdout |
-| Portal shows job ID only, no deploy details | Use custom template **DEMO - Deploy Web Application (with deploy summary)**; auto-generated templates do not fetch stdout |
-| Portal shows job ID only, no verify details | Use custom template **DEMO - Verify Web Application (with verify summary)**; auto-generated templates do not fetch stdout |
-| Portal fetch-stdout fails (`fetch:plain` / `requestHeaders`) | Re-import updated templates; run `./controller/configure-portal-aap-proxy.sh` on bastion. Custom templates use `http:backstage:request` through `/proxy/aap-gateway/` |
+| Portal shows job ID only, no packages | Use custom template **DEMO - Patch RHEL Servers (with package summary)** and run `./controller/configure-portal-launch-logging.sh` on bastion |
+| Portal shows job ID only, no deploy details | Use custom template **DEMO - Deploy Web Application (with deploy summary)** and run `./controller/configure-portal-launch-logging.sh` |
+| Portal shows job ID only, no verify details | Use custom template **DEMO - Verify Web Application (with verify summary)** and run `./controller/configure-portal-launch-logging.sh` |
+| Launch log still shows only job ID/status | Re-run `./controller/configure-portal-launch-logging.sh`; confirm init container `patch-portal-launch-logging` succeeded; re-import templates from Git |
 
 ## References
 

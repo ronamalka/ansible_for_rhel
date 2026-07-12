@@ -4,10 +4,10 @@ metadata:
   name: demo-verify-web-app-summary
   title: DEMO - Verify Web Application (with verify summary)
   description: >-
-    Verify deployed web applications on RHEL hosts and show per-node URL,
-    HTTP status, stage, and content snippet in the portal output after the
-    job completes. Uses the same Controller job template as the auto-generated
-    Verify Web Application tile.
+    Verify deployed web applications on RHEL hosts and stream per-node URL,
+    HTTP status, stage, and content snippet into the portal launch step log.
+    Uses the same Controller job template as the auto-generated Verify Web
+    Application tile.
   tags:
     - demo-self-service
     - ansible
@@ -25,19 +25,6 @@ spec:
         values:
           template: DEMO - Verify Web Application
 
-    - id: fetch-stdout
-      name: Fetch verify job output
-      action: http:backstage:request
-      input:
-        method: GET
-        path: /proxy/aap-gateway/api/controller/v2/jobs/${{ steps['launch-job'].output.data.id }}/stdout/
-        params:
-          format: txt
-        headers:
-          Authorization: Bearer ${{ secrets.aapToken }}
-        timeout: 120000
-        logRequestPath: false
-
   output:
     text:
       - title: Verify job completed
@@ -45,12 +32,8 @@ spec:
           **Job ID:** ${{ steps['launch-job'].output.data.id }}
           **Status:** ${{ steps['launch-job'].output.data.status }}
 
-          Per-node verify checks appear in the summary block below (also visible in Controller job stdout).
-      - title: Per-node verify summary
-        content: |
-          ```
-          ${{ steps['fetch-stdout'].output.body }}
-          ```
+          Per-node verify checks were streamed in the **Create Task** step log above
+          (`DEMO_VERIFY_PORTAL` lines and the `DEMO VERIFY SUMMARY` block).
     links:
       - title: View full job in Ansible Automation Platform
         url: ${{ steps['launch-job'].output.data.url }}

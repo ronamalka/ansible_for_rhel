@@ -4,9 +4,9 @@ metadata:
   name: demo-deploy-web-app-summary
   title: DEMO - Deploy Web Application (with deploy summary)
   description: >-
-    Deploy Apache httpd with environment-specific content and show per-node
-    deploy details in the portal output after the job completes. Uses the same
-    Controller job template as the auto-generated Deploy Web Application tile.
+    Deploy Apache httpd with environment-specific content and stream per-node
+    deploy details into the portal launch step log. Uses the same Controller job
+    template as the auto-generated Deploy Web Application tile.
   tags:
     - demo-self-service
     - ansible
@@ -41,19 +41,6 @@ spec:
             dev_content: ${{ parameters.dev_content }}
             prod_content: ${{ parameters.prod_content }}
 
-    - id: fetch-stdout
-      name: Fetch deploy job output
-      action: http:backstage:request
-      input:
-        method: GET
-        path: /proxy/aap-gateway/api/controller/v2/jobs/${{ steps['launch-job'].output.data.id }}/stdout/
-        params:
-          format: txt
-        headers:
-          Authorization: Bearer ${{ secrets.aapToken }}
-        timeout: 120000
-        logRequestPath: false
-
   output:
     text:
       - title: Deploy job completed
@@ -61,12 +48,8 @@ spec:
           **Job ID:** ${{ steps['launch-job'].output.data.id }}
           **Status:** ${{ steps['launch-job'].output.data.status }}
 
-          Per-node deploy details appear in the summary block below (also visible in Controller job stdout).
-      - title: Per-node deploy summary
-        content: |
-          ```
-          ${{ steps['fetch-stdout'].output.body }}
-          ```
+          Per-node deploy details were streamed in the **Create Task** step log above
+          (`DEMO_DEPLOY_PORTAL` lines and the `DEMO DEPLOY SUMMARY` block).
     links:
       - title: View full job in Ansible Automation Platform
         url: ${{ steps['launch-job'].output.data.url }}
