@@ -2,6 +2,9 @@
 # Deploy the AAP self-service automation portal on OpenShift (AAP 2.5+).
 # Run on the bastion after controller OAuth and RBAC are configured.
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=gateway-oauth.lib.sh
+. "${SCRIPT_DIR}/gateway-oauth.lib.sh"
 
 OCP_NAMESPACE="${OCP_NAMESPACE:-rhaap-portal}"
 HELM_RELEASE="${HELM_RELEASE:-redhat-rhaap-portal}"
@@ -11,7 +14,8 @@ CLUSTER_ROUTER_BASE="${CLUSTER_ROUTER_BASE:-apps.cluster-jmvv9.jmvv9.sandbox3400
 
 AAP_HOST_URL="${AAP_HOST_URL:-https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
 CONTROLLER="${CONTROLLER:-https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
-OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:?Set OAUTH_CLIENT_ID from AAP OAuth application}"
+OAUTH_APP_NAME="${OAUTH_APP_NAME:-Ansible Automation Portal}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-}"
 # Public OAuth clients have no secret; Backstage still requires a non-empty string.
 OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-public-client-no-secret}"
 AAP_TOKEN="${AAP_TOKEN:?Set AAP_TOKEN (controller token with write access)}"
@@ -101,6 +105,22 @@ echo "=== Prerequisites ==="
 command -v oc >/dev/null || { echo "oc required" >&2; exit 1; }
 command -v helm >/dev/null || { echo "helm required (install Helm 3.10+)" >&2; exit 1; }
 command -v python3 >/dev/null || { echo "python3 required for app-config repair" >&2; exit 1; }
+if [[ -z "${OAUTH_CLIENT_ID}" ]]; then
+  auth_args=()
+  if [[ -n "${CONTROLLER_TOKEN:-}" ]]; then
+    auth_args=(-H "Authorization: Bearer ${CONTROLLER_TOKEN}")
+    gateway_auth=("${auth_args[@]}")
+  elif [[ -n "${AAP_ADMIN_PASSWORD:-}" ]]; then
+    gateway_auth=(-u "admin:${AAP_ADMIN_PASSWORD}")
+  else
+    echo "Set OAUTH_CLIENT_ID or CONTROLLER_TOKEN (or AAP_ADMIN_PASSWORD) to resolve Gateway OAuth client_id" >&2
+    exit 1
+  fi
+  echo "=== Resolving OAUTH_CLIENT_ID from Gateway OAuth application ===" >&2
+  OAUTH_CLIENT_ID="$(resolve_gateway_oauth_client_id "${OAUTH_APP_NAME}")" || exit 1
+  echo "Using Gateway OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}" >&2
+fi
+
 oc whoami >/dev/null
 
 helm repo add openshift-helm-charts https://charts.openshift.io/ 2>/dev/null || true

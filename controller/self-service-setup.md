@@ -284,7 +284,8 @@ Sign in with **demo-user** credentials (same as controller). Configure portal RB
 Automated deploy on bastion:
 
 ```bash
-export OAUTH_CLIENT_ID="7Njfd7j6xn58tDAb8C3Xjf6fUbssydjT22niynvT"
+export OAUTH_CLIENT_ID="$(curl -sk -u admin:$CONTROLLER_PASSWORD \
+  "$AAP_HOST_URL/api/gateway/v1/applications/" | python3 -c "import sys,json; [print(i['client_id']) for i in json.load(sys.stdin)['results'] if i['name']=='Ansible Automation Portal']")"
 export AAP_TOKEN="<controller-token>"
 ./controller/deploy-self-service-portal.sh
 ```

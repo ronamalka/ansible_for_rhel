@@ -5,6 +5,7 @@
 set -euo pipefail
 
 CONTROLLER="${CONTROLLER:-https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
+AAP_GATEWAY="${AAP_GATEWAY:-https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
 CONTROLLER_USER="${CONTROLLER_USER:-admin}"
 CONTROLLER_PASSWORD="${CONTROLLER_PASSWORD:-}"
 CONTROLLER_TOKEN="${CONTROLLER_TOKEN:-}"
@@ -22,6 +23,8 @@ OAUTH_APP_NAME="${OAUTH_APP_NAME:-Ansible Automation Portal}"
 OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI:-https://PLACEHOLDER/api/auth/rhaap/handler/frame}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=gateway-oauth.lib.sh
+. "${SCRIPT_DIR}/gateway-oauth.lib.sh"
 METADATA_FILE="${METADATA_FILE:-${SCRIPT_DIR}/demo-template-metadata.json}"
 
 if [[ -n "${CONTROLLER_TOKEN}" ]]; then
@@ -31,6 +34,14 @@ elif [[ -n "${CONTROLLER_PASSWORD}" ]]; then
 else
   echo "Set CONTROLLER_TOKEN or CONTROLLER_PASSWORD" >&2
   exit 1
+fi
+
+if [[ -n "${CONTROLLER_TOKEN}" ]]; then
+  gateway_auth=(-H "Authorization: Bearer ${CONTROLLER_TOKEN}")
+elif [[ -n "${CONTROLLER_PASSWORD}" ]]; then
+  gateway_auth=(-u "${CONTROLLER_USER}:${CONTROLLER_PASSWORD}")
+else
+  gateway_auth=("${auth[@]}")
 fi
 
 api_get() {
@@ -259,6 +270,8 @@ print(json.dumps({'redirect_uris': '''${OAUTH_REDIRECT_URI}'''}))
   fi
 fi
 
+PORTAL_OAUTH_CLIENT_ID="$(ensure_gateway_oauth_application "${OAUTH_APP_NAME}" "${OAUTH_REDIRECT_URI}" "${ORGANIZATION_ID}")"
+
 echo "=== Verifying ${DEMO_USER} can see DEMO templates ==="
 demo_auth=(-u "${DEMO_USER}:${DEMO_USER_PASSWORD}")
 count=$(curl -sk "${demo_auth[@]}" \
@@ -277,4 +290,9 @@ echo "=== Self-service controller configuration complete ==="
 echo "Demo user: ${DEMO_USER}"
 echo "Templates exposed: DEMO job templates ${DEMO_TEMPLATE_IDS} and workflow ${WORKFLOW_TEMPLATE_ID}"
 echo "Controller templates URL: ${CONTROLLER}/#/templates"
-echo "Automation portal: deploy separately and update OAuth redirect URI (see controller/self-service-setup.md)"
+if [[ -n "${PORTAL_OAUTH_CLIENT_ID}" ]]; then
+  echo "Portal OAUTH_CLIENT_ID (Gateway — use in deploy-self-service-portal.sh): ${PORTAL_OAUTH_CLIENT_ID}"
+else
+  echo "Portal OAUTH_CLIENT_ID: set after Gateway OAuth app exists (see controller/self-service-setup.md)" >&2
+fi
+echo "Automation portal: deploy with Gateway client_id (Controller OAuth app is separate)"
