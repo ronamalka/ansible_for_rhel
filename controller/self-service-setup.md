@@ -163,14 +163,55 @@ oc get route -n rhaap-portal
 
 ### 5. Configure portal RBAC
 
-In the portal → **Administration → RBAC**, create a role (e.g. `demo-portal-users`):
+Portal RBAC is **separate** from controller RBAC. Non-admin users need a portal role with catalog + scaffolder permissions before synchronized templates appear.
 
-- Assign **Demo Self-Service** team (or demo-user)
-- **Catalog:** `catalog.entity.read`
-- **Scaffolder:** `scaffolder.action.execute`, `scaffolder.task.*`, `scaffolder.template.*`
-- Optional conditional access by tag `demo-self-service`
+#### Option A — Automated (bastion, recommended)
 
-See [Red Hat initial portal RBAC setup](https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/install-con_self_service_initial_rbac_setup).
+Run on the bastion after the portal pod is healthy (`oc get pods -n rhaap-portal`):
+
+```bash
+./controller/configure-portal-rbac.sh
+```
+
+The script is idempotent. It writes Casbin rules to the portal PostgreSQL database (`backstage_plugin_permission`) for role `demo-portal-users`:
+
+| Binding | Entity reference |
+|---------|------------------|
+| User | `user:default/demo-user` |
+| Team | `group:default/demo-self-service` |
+
+Permissions granted:
+
+| Plugin | Permissions |
+|--------|-------------|
+| Catalog | `catalog.entity.read` |
+| Scaffolder | `scaffolder.template.parameter.read`, `scaffolder.template.step.read`, `scaffolder.action.execute`, `scaffolder.task.cancel`, `scaffolder.task.create`, `scaffolder.task.read` |
+| Navigation | `ansible.templates.view`, `ansible.history.view` |
+
+Conditional catalog filter (tag `demo-self-service`) limits visible templates to the six DEMO job/workflow templates.
+
+**Do not** set `RESTART_PORTAL=1` on resource-constrained sandboxes (namespace CPU quota may block a second pod). Policies load from PostgreSQL without a restart.
+
+Optional verification (requires `DEMO_USER_PASSWORD` in the environment — never commit):
+
+```bash
+export DEMO_USER_PASSWORD='<demo-user-password>'
+export VERIFY_OAUTH=1
+./controller/configure-portal-rbac.sh
+```
+
+#### Option B — Manual UI (admin login)
+
+1. Sign in to the portal as an **AAP administrator** (user `admin` or member of `aap-admins`).
+2. Open **Administration → RBAC → Create**.
+3. Name: `demo-portal-users`.
+4. **Users and Groups:** select **demo-user** and **Demo Self-Service** team (synced from AAP org `Default`).
+5. **Catalog plugin:** enable `catalog.entity.read`.
+   - Optional **Conditional:** rule `HAS_METADATA`, key `tags`, value `demo-self-service`.
+6. **Scaffolder plugin:** enable all scaffolder permissions (`scaffolder.template.*`, `scaffolder.action.execute`, `scaffolder.task.*`).
+7. Save the role.
+
+See [Red Hat initial portal RBAC setup](https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.7/install-con_self_service_initial_rbac_setup).
 
 ### Portal URL
 
@@ -234,7 +275,7 @@ Sign in with **demo-user** credentials (same as controller). Configure portal RB
 | Helm release | `redhat-rhaap-portal` in namespace `rhaap-portal` |
 | Portal URL | `https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` |
 | OAuth redirect URI | Updated to portal `/api/auth/rhaap/handler/frame` |
-| Portal RBAC for demo-user | **Manual** — assign Demo Self-Service team in portal Administration → RBAC |
+| Portal RBAC for demo-user | **Configured** — role `demo-portal-users` (15 Casbin rules + tag filter `demo-self-service`) via `configure-portal-rbac.sh` |
 | External DNS | Use `apps.` in `clusterRouterBase`; see **Browser access** above |
 | Known pitfall | Duplicate `catalog.providers.rhaap.production` in merged app-config → `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 | Known pitfall | Login page offers **Sign in with GitHub** — disable guest auth plugins: `DISABLE_GUEST_AUTH=1 ./controller/deploy-self-service-portal.sh` (included in full deploy) |
@@ -285,13 +326,33 @@ curl -sk -u "demo-user:${DEMO_USER_PASSWORD}" \
 
 Should return survey/launch schema (not 403).
 
+### Portal check (demo-user after OAuth)
+
+1. Open `https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/`
+2. Click **Sign in with RHAAP** (not GitHub).
+3. Authenticate as **demo-user** (password set via `DEMO_USER_PASSWORD` during setup).
+4. Open **Templates** — expect six DEMO templates (tag `demo-self-service`).
+5. Launch **DEMO - Patch RHEL Servers** — wizard should open; job starts if inventory hosts are reachable.
+
+Confirm RBAC rules on bastion:
+
+```bash
+oc exec -n rhaap-portal redhat-rhaap-portal-postgresql-0 -- \
+  env PGPASSWORD="$(oc get secret redhat-rhaap-portal-postgresql -n rhaap-portal -o jsonpath='{.data.postgres-password}' | base64 -d)" \
+  psql -U postgres -d backstage_plugin_permission \
+  -c "SELECT count(*) FROM casbin_rule WHERE v1='role:default/demo-portal-users' OR v0 LIKE '%demo-user%';"
+```
+
+Expected: **15** rows.
+
 ## Troubleshooting
 
 | Issue | Resolution |
 |-------|------------|
 | API 401/403 with admin password | Use `CONTROLLER_TOKEN` instead |
 | User/team create 403 | Create via Gateway UI or controller DB on OCP deployments |
-| demo-user sees no templates | Re-run `configure-self-service.sh`; confirm Execute role |
+| demo-user sees no templates (controller) | Re-run `configure-self-service.sh`; confirm Execute role |
+| demo-user sees no templates (portal) | Run `./controller/configure-portal-rbac.sh` on bastion; confirm 15 Casbin rules; sign in with RHAAP OAuth |
 | Portal login shows GitHub instead of AAP | Helm chart enables `backstage-plugin-auth-backend-module-github-provider` by default; run `DISABLE_GUEST_AUTH=1 ./controller/deploy-self-service-portal.sh` or re-run full deploy script |
 | Portal login fails | Enable `ALLOW_OAUTH2_FOR_EXTERNAL_USERS`; verify OAuth redirect URI matches **route host** (`apps.` domain on OpenTLC) |
 | Portal `CrashLoopBackOff` / `YAMLParseError duplicate production` | Do not merge a second `catalog.providers.rhaap.production` block; run `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
