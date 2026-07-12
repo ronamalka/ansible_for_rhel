@@ -3,6 +3,11 @@
   hosts: web
   gather_facts: false
   become: false
+  vars:
+    web_app_host_stages:
+      node1: dev
+      node2: prod
+      node3: dev
   tasks:
     - name: Resolve deployment stage for host
       ansible.builtin.set_fact:
