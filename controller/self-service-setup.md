@@ -364,7 +364,7 @@ Ansible `debug` output from the playbook appears in **Controller job stdout**, n
 | Layer | What it does |
 |-------|----------------|
 | `roles/rhel_patching` | Per-host banners plus `DEMO_PATCH_PORTAL` marker lines; sets `rhel_patching_updated_package_names` |
-| `playbooks/patch_rhel.yml` | Final localhost play prints `DEMO PATCH PACKAGE SUMMARY (portal)` block for all `web` hosts |
+| `playbooks/patch_rhel.yml` | Final play on `web` (run_once) prints `DEMO PATCH PACKAGE SUMMARY (portal)` block for all `web` hosts |
 | Custom portal template | `controller/portal-templates/patch-rhel-package-summary.yaml` — launches template 44, fetches job stdout via Controller API, displays it in portal **output** |
 
 ### Register the package-summary portal template (once per portal)
@@ -389,7 +389,7 @@ Auto-generated **Deploy Web Application** portal templates show the same high-le
 | Layer | What it does |
 |-------|----------------|
 | `roles/web_application` | Per-host banners plus `DEMO_DEPLOY_PORTAL` marker lines; sets `web_app_deploy_*` facts (packages, stage, services, URL, content) |
-| `playbooks/deploy_application.yml` | Final localhost play prints `DEMO DEPLOY SUMMARY (portal)` block for all `web` hosts |
+| `playbooks/deploy_application.yml` | Final play on `web` (run_once) prints `DEMO DEPLOY SUMMARY (portal)` block for all `web` hosts |
 | Custom portal template | `controller/portal-templates/deploy-web-app-summary.yaml` — launches template 47, fetches job stdout via Controller API, displays it in portal **output** |
 
 ### Register custom portal templates (once per portal)
@@ -407,9 +407,9 @@ Presenters launch **DEMO - Deploy Web Application (with deploy summary)** instea
 
 ```
 ===== DEMO DEPLOY SUMMARY (portal) =====
-node1: packages=httpd, firewalld | stage=dev | services=httpd=active, firewalld=active | url=http://node1/ | content=Development content deployed by Ansible
-node2: packages=httpd, firewalld | stage=prod | services=httpd=active, firewalld=active | url=http://node2/ | content=Production content deployed by Ansible
-node3: packages=httpd, firewalld | stage=dev | services=httpd=active, firewalld=active | url=http://node3/ | content=Development content deployed by Ansible
+node1: packages=httpd, firewalld | stage=dev | services=httpd=running, firewalld=running | url=http://node1/ | content=Development content deployed by Ansible
+node2: packages=httpd, firewalld | stage=prod | services=httpd=running, firewalld=running | url=http://node2/ | content=Production content deployed by Ansible
+node3: packages=httpd, firewalld | stage=dev | services=httpd=running, firewalld=running | url=http://node3/ | content=Development content deployed by Ansible
 ===== END DEMO DEPLOY SUMMARY (portal) =====
 ```
 

@@ -9,7 +9,7 @@
     - rhel_patching
 
 - name: Aggregate patch results for portal and job stdout
-  hosts: localhost
+  hosts: web
   gather_facts: false
   tasks:
     - name: Print portal-visible per-node package summary
