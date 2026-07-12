@@ -4,3 +4,17 @@
   become: true
   roles:
     - web_application
+
+- name: Aggregate deploy results for portal and job stdout
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Print portal-visible per-node deploy summary
+      ansible.builtin.debug:
+        msg: |
+          ===== DEMO DEPLOY SUMMARY (portal) =====
+          {% for host in groups['web'] | sort %}
+          {{ host }}: packages={{ hostvars[host].web_app_deploy_packages | default('unknown') }} | stage={{ hostvars[host].web_app_deploy_stage | default('unknown') }} | services={{ hostvars[host].web_app_deploy_services | default('unknown') }} | url={{ hostvars[host].web_app_deploy_url | default('unknown') }} | content={{ hostvars[host].web_app_deploy_content | default('unknown') }}
+          {% endfor %}
+          ===== END DEMO DEPLOY SUMMARY (portal) =====
+      run_once: true

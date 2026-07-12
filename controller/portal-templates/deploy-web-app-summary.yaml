@@ -1,0 +1,67 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: demo-deploy-web-app-summary
+  title: DEMO - Deploy Web Application (with deploy summary)
+  description: >-
+    Deploy Apache httpd with environment-specific content and show per-node
+    deploy details in the portal output after the job completes. Uses the same
+    Controller job template as the auto-generated Deploy Web Application tile.
+  tags:
+    - demo-self-service
+    - ansible
+    - deployment
+spec:
+  owner: group:default/demo-self-service
+  type: service
+
+  parameters:
+    - title: Deploy options
+      properties:
+        dev_content:
+          title: Development page content
+          description: Text shown on dev-stage hosts (node1, node3).
+          type: string
+          default: Development content deployed by Ansible
+        prod_content:
+          title: Production page content
+          description: Text shown on prod-stage hosts (node2).
+          type: string
+          default: Production content deployed by Ansible
+
+  steps:
+    - id: launch-job
+      name: DEMO - Deploy Web Application
+      action: rhaap:launch-job-template
+      input:
+        token: ${{ secrets.aapToken }}
+        values:
+          template: DEMO - Deploy Web Application
+          extraVariables:
+            dev_content: ${{ parameters.dev_content }}
+            prod_content: ${{ parameters.prod_content }}
+
+    - id: fetch-stdout
+      name: Fetch deploy job output
+      action: fetch:plain
+      input:
+        url: https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/api/v2/jobs/${{ steps['launch-job'].output.data.id }}/stdout/?format=txt
+        requestHeaders:
+          Authorization: Bearer ${{ secrets.aapToken }}
+
+  output:
+    text:
+      - title: Deploy job completed
+        content: |
+          **Job ID:** ${{ steps['launch-job'].output.data.id }}
+          **Status:** ${{ steps['launch-job'].output.data.status }}
+
+          Per-node deploy details appear in the summary block below (also visible in Controller job stdout).
+      - title: Per-node deploy summary
+        content: |
+          ```
+          ${{ steps['fetch-stdout'].output.body }}
+          ```
+    links:
+      - title: View full job in Ansible Automation Platform
+        url: ${{ steps['launch-job'].output.data.url }}

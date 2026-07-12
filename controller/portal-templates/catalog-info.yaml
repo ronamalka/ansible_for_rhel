@@ -7,3 +7,4 @@ spec:
   type: url
   targets:
     - ./patch-rhel-package-summary.yaml
+    - ./deploy-web-app-summary.yaml

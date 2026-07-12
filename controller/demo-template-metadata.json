@@ -15,7 +15,7 @@
     },
     "14": {
       "name": "DEMO - Deploy Web Application",
-      "description": "Deploy Apache httpd with environment-specific content on RHEL web servers."
+      "description": "Deploy Apache httpd with environment-specific content on RHEL web servers. Job stdout and the portal deploy-summary template show per-node packages, stage, services, URL, and content."
     },
     "15": {
       "name": "DEMO - Verify Web Application",

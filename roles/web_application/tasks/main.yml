@@ -49,3 +49,27 @@
 - name: Display deployed content snippet
   ansible.builtin.debug:
     msg: "{{ web_app_health.content | regex_replace('\\s+', ' ') | truncate(120) }}"
+
+- name: Gather service facts for portal summary
+  ansible.builtin.service_facts:
+
+- name: Capture deploy summary facts for portal
+  ansible.builtin.set_fact:
+    web_app_deploy_packages: "{{ web_app_packages | join(', ') }}"
+    web_app_deploy_stage: "{{ stage }}"
+    web_app_deploy_services: >-
+      {{ web_app_service }}={{ ansible_facts.services[web_app_service ~ '.service']['state'] | default('unknown') }},
+      firewalld={{ ansible_facts.services['firewalld.service']['state'] | default('unknown') }}
+    web_app_deploy_url: "http://{{ inventory_hostname }}/"
+    web_app_deploy_content: "{{ prod_content if stage == 'prod' else dev_content }}"
+
+- name: Report deploy summary
+  ansible.builtin.debug:
+    msg:
+      - "========== DEPLOY SUMMARY: {{ inventory_hostname }} =========="
+      - "Packages: {{ web_app_deploy_packages }}"
+      - "Stage: {{ web_app_deploy_stage }}"
+      - "Services: {{ web_app_deploy_services }}"
+      - "URL: {{ web_app_deploy_url }}"
+      - "Content: {{ web_app_deploy_content }}"
+      - "DEMO_DEPLOY_PORTAL | host={{ inventory_hostname }} | packages={{ web_app_deploy_packages }} | stage={{ web_app_deploy_stage }} | services={{ web_app_deploy_services | replace(' ', '') }} | url={{ web_app_deploy_url }} | content={{ web_app_deploy_content }}"

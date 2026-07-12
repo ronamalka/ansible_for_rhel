@@ -369,14 +369,7 @@ Ansible `debug` output from the playbook appears in **Controller job stdout**, n
 
 ### Register the package-summary portal template (once per portal)
 
-1. Sign in to the portal as an AAP administrator.
-2. **Templates** → **Add template**.
-3. Git URL:
-
-   `https://github.com/ronamalka/ansible_for_rhel/blob/main/controller/portal-templates/catalog-info.yaml`
-
-4. Click **Analyze** → **Import**.
-5. Grant `demo-portal-users` catalog read on the new template (or rely on tag filter if configured).
+See **Register custom portal templates** under [Portal deploy job output](#portal-deploy-job-output-per-node-details) — one catalog import registers both patch and deploy summary templates.
 
 Presenters launch **DEMO - Patch RHEL Servers (with package summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
 
@@ -385,6 +378,39 @@ Presenters launch **DEMO - Patch RHEL Servers (with package summary)** instead o
 node1: openssl-libs, kernel-core
 node2: none
 ===== END DEMO PATCH PACKAGE SUMMARY (portal) =====
+```
+
+## Portal deploy job output (per-node details)
+
+Auto-generated **Deploy Web Application** portal templates show the same high-level scaffolder log as patching (job ID and status only). Per-host deploy details live in Controller job stdout unless you use the custom portal template.
+
+### Approach
+
+| Layer | What it does |
+|-------|----------------|
+| `roles/web_application` | Per-host banners plus `DEMO_DEPLOY_PORTAL` marker lines; sets `web_app_deploy_*` facts (packages, stage, services, URL, content) |
+| `playbooks/deploy_application.yml` | Final localhost play prints `DEMO DEPLOY SUMMARY (portal)` block for all `web` hosts |
+| Custom portal template | `controller/portal-templates/deploy-web-app-summary.yaml` — launches template 47, fetches job stdout via Controller API, displays it in portal **output** |
+
+### Register custom portal templates (once per portal)
+
+1. Sign in to the portal as an AAP administrator.
+2. **Templates** → **Add template**.
+3. Git URL:
+
+   `https://github.com/ronamalka/ansible_for_rhel/blob/main/controller/portal-templates/catalog-info.yaml`
+
+4. Click **Analyze** → **Import** (imports both patch and deploy summary templates).
+5. Grant `demo-portal-users` catalog read on the new templates (or rely on tag filter if configured).
+
+Presenters launch **DEMO - Deploy Web Application (with deploy summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
+
+```
+===== DEMO DEPLOY SUMMARY (portal) =====
+node1: packages=httpd, firewalld | stage=dev | services=httpd=active, firewalld=active | url=http://node1/ | content=Development content deployed by Ansible
+node2: packages=httpd, firewalld | stage=prod | services=httpd=active, firewalld=active | url=http://node2/ | content=Production content deployed by Ansible
+node3: packages=httpd, firewalld | stage=dev | services=httpd=active, firewalld=active | url=http://node3/ | content=Development content deployed by Ansible
+===== END DEMO DEPLOY SUMMARY (portal) =====
 ```
 
 ### Sync Controller project after Git push
@@ -410,6 +436,7 @@ On the bastion (with `CONTROLLER_TOKEN` or `CONTROLLER_PASSWORD` set):
 | Portal chart missing | Download from Red Hat Customer Portal or use OpenShift Helm catalog with registry auth |
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |
 | Portal shows job ID only, no packages | Use custom template **DEMO - Patch RHEL Servers (with package summary)**; auto-generated templates do not fetch stdout |
+| Portal shows job ID only, no deploy details | Use custom template **DEMO - Deploy Web Application (with deploy summary)**; auto-generated templates do not fetch stdout |
 
 ## References
 
