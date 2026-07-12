@@ -4,9 +4,10 @@
 # Run after job templates exist (see controller/job-templates.md).
 set -euo pipefail
 
-CONTROLLER="${CONTROLLER:-https://ansible-1.4mrmx.sandbox3261.opentlc.com}"
+CONTROLLER="${CONTROLLER:-https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
 CONTROLLER_USER="${CONTROLLER_USER:-admin}"
-CONTROLLER_PASSWORD="${CONTROLLER_PASSWORD:?Set CONTROLLER_PASSWORD in the environment}"
+CONTROLLER_PASSWORD="${CONTROLLER_PASSWORD:-}"
+CONTROLLER_TOKEN="${CONTROLLER_TOKEN:-}"
 
 DEMO_USER="${DEMO_USER:-demo-user}"
 DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:?Set DEMO_USER_PASSWORD in the environment (not stored in Git)}"
@@ -18,12 +19,19 @@ DEMO_TEMPLATE_IDS="${DEMO_TEMPLATE_IDS:-11 12 13 14 15}"
 WORKFLOW_TEMPLATE_ID="${WORKFLOW_TEMPLATE_ID:-16}"
 
 OAUTH_APP_NAME="${OAUTH_APP_NAME:-Ansible Automation Portal}"
-OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI:-https://PLACEHOLDER/automation-portal/api/auth/rhaap/handler/frame}"
+OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI:-https://PLACEHOLDER/api/auth/rhaap/handler/frame}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 METADATA_FILE="${METADATA_FILE:-${SCRIPT_DIR}/demo-template-metadata.json}"
 
-auth=(-u "${CONTROLLER_USER}:${CONTROLLER_PASSWORD}")
+if [[ -n "${CONTROLLER_TOKEN}" ]]; then
+  auth=(-H "Authorization: Bearer ${CONTROLLER_TOKEN}")
+elif [[ -n "${CONTROLLER_PASSWORD}" ]]; then
+  auth=(-u "${CONTROLLER_USER}:${CONTROLLER_PASSWORD}")
+else
+  echo "Set CONTROLLER_TOKEN or CONTROLLER_PASSWORD" >&2
+  exit 1
+fi
 
 api_get() {
   curl -sk "${auth[@]}" "${CONTROLLER}$1"
@@ -181,13 +189,18 @@ metadata_file, label_id = sys.argv[1], sys.argv[2]
 with open(metadata_file) as f:
     meta = json.load(f)
 
-controller = __import__("os").environ.get("CONTROLLER", "https://ansible-1.4mrmx.sandbox3261.opentlc.com")
+controller = __import__("os").environ.get("CONTROLLER", "https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com")
+token = __import__("os").environ.get("CONTROLLER_TOKEN", "")
 user = __import__("os").environ.get("CONTROLLER_USER", "admin")
-password = __import__("os").environ["CONTROLLER_PASSWORD"]
-auth = f"{user}:{password}"
+password = __import__("os").environ.get("CONTROLLER_PASSWORD", "")
+
+def curl_auth_cmd():
+    if token:
+        return ["-H", f"Authorization: Bearer {token}"]
+    return ["-u", f"{user}:{password}"]
 
 def curl(method, path, data=None):
-    cmd = ["curl", "-sk", "-u", auth, "-o", "/dev/null", "-X", method, "-H", "Content-Type: application/json"]
+    cmd = ["curl", "-sk"] + curl_auth_cmd() + ["-o", "/dev/null", "-X", method, "-H", "Content-Type: application/json"]
     if data is not None:
         cmd += ["-d", json.dumps(data)]
     cmd.append(f"{controller}{path}")
@@ -196,7 +209,7 @@ def curl(method, path, data=None):
 for tid, info in meta.get("job_templates", {}).items():
     curl("PATCH", f"/api/v2/job_templates/{tid}/", {"description": info["description"]})
     result = subprocess.run(
-        ["curl", "-sk", "-u", auth, "-o", "/dev/null", "-w", "%{http_code}",
+        ["curl", "-sk"] + curl_auth_cmd() + ["-o", "/dev/null", "-w", "%{http_code}",
          "-X", "POST", "-H", "Content-Type: application/json",
          "-d", json.dumps({"id": int(label_id)}),
          f"{controller}/api/v2/job_templates/{tid}/labels/"],
@@ -207,7 +220,7 @@ for tid, info in meta.get("job_templates", {}).items():
 for tid, info in meta.get("workflow_job_templates", {}).items():
     curl("PATCH", f"/api/v2/workflow_job_templates/{tid}/", {"description": info["description"]})
     result = subprocess.run(
-        ["curl", "-sk", "-u", auth, "-o", "/dev/null", "-w", "%{http_code}",
+        ["curl", "-sk"] + curl_auth_cmd() + ["-o", "/dev/null", "-w", "%{http_code}",
          "-X", "POST", "-H", "Content-Type: application/json",
          "-d", json.dumps({"id": int(label_id)}),
          f"{controller}/api/v2/workflow_job_templates/{tid}/labels/"],

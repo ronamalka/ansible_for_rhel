@@ -6,18 +6,19 @@ Use these settings when creating job templates in Ansible Automation Controller 
 
 | Resource | Value |
 |----------|-------|
-| Controller URL | `https://ansible-1.4mrmx.sandbox3261.opentlc.com` |
-| Inventory | **Workshop Inventory** (id: 2) |
-| Credential | **Workshop Credential** (Machine, id: 4) |
-| Execution Environment | Default execution environment |
-| Project | Create **RHEL Demo Project** (see below) |
+| Controller URL | `https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
+| Gateway URL | `https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
+| Inventory | **Workshop Inventory** (id: 34 on jmvv9) |
+| Credential | **Workshop Credential** (Machine, id: 35) |
+| Execution Environment | Default execution environment (id: 2) |
+| Project | **RHEL Demo Project** (id: 43) |
 
 ## Project Setup
 
 | Parameter | Value |
 |-----------|-------|
 | Name | RHEL Demo Project |
-| Controller project id | 10 |
+| Controller project id | 43 |
 | Organization | Default |
 | SCM Type | Git |
 | SCM URL | `https://github.com/ronamalka/ansible_for_rhel.git` |
@@ -30,7 +31,7 @@ This project is configured on the sandbox controller and syncs from the public G
 
 ```bash
 # From your workstation
-scp -r ansible_for_rhel/ student1@ansible-1.4mrmx.sandbox3261.opentlc.com:~/ansible_for_rhel/
+scp -r ansible_for_rhel/ lab-user@bastion.jmvv9.sandbox3400.opentlc.com:~/ansible_for_rhel/
 ```
 
 ## Post-create: attach SSH credential
@@ -38,7 +39,7 @@ scp -r ansible_for_rhel/ student1@ansible-1.4mrmx.sandbox3261.opentlc.com:~/ansi
 Job templates do not store SSH keys in Git. After creating the DEMO templates, attach **Workshop Credential** (Machine, id 4 on the sandbox):
 
 ```bash
-export CONTROLLER_PASSWORD='<controller-admin-password>'
+export CONTROLLER_TOKEN='<controller-token>'
 ./controller/configure-demo-job-templates.sh
 ```
 
@@ -49,7 +50,7 @@ Without this step, jobs connect as `root` with no key and fail with `Permission 
 After templates exist, configure the demo self-service user and RBAC:
 
 ```bash
-export CONTROLLER_PASSWORD='<controller-admin-password>'
+export CONTROLLER_TOKEN='<controller-token>'
 export DEMO_USER_PASSWORD='<demo-user-password>'
 ./controller/configure-self-service.sh
 ```

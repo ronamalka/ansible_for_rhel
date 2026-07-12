@@ -21,9 +21,9 @@ flowchart LR
 
 | Resource | Value |
 |----------|-------|
-| Workflow job template | **DEMO - RHEL Operations Pipeline** (id: 16) |
-| Inventory | Workshop Inventory (id: 2) |
-| Node chain | Job templates 11 → 12 → 13 → 14 → 15 (On Success) |
+| Workflow job template | **DEMO - RHEL Operations Pipeline** (id: 49 on jmvv9) |
+| Inventory | Workshop Inventory (id: 34) |
+| Node chain | Job templates 44 → 45 → 46 → 47 → 48 (On Success) |
 | Self-service | Exposed to `demo-user` via `configure-self-service.sh` |
 
 ### Self-service launch

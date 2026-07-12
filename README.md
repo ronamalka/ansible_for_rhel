@@ -16,12 +16,16 @@ End-to-end demonstration of managing Red Hat Enterprise Linux servers with Ansib
 
 | Resource | Value |
 |----------|-------|
-| Controller | `https://ansible-1.4mrmx.sandbox3261.opentlc.com` |
-| Controller user | `admin` (password: see lab environment or Ansible Vault) |
-| Bastion SSH | `ssh student1@ansible-1.4mrmx.sandbox3261.opentlc.com` |
-| Bastion password | `<bastion-password>` (see lab environment) |
+| AAP Gateway (UI) | `https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
+| AAP Controller API | `https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
+| OpenShift Console | `https://console-openshift-console.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
+| OpenShift API | `https://api.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com:6443` |
+| Bastion SSH | `ssh lab-user@bastion.jmvv9.sandbox3400.opentlc.com` |
+| Admin / bastion password | `<admin-password>` (see lab environment — **never commit**) |
+| Controller API token | `<controller-token>` (see lab environment — **never commit**) |
 | Git repository | `https://github.com/ronamalka/ansible_for_rhel` |
 | Inventory | Workshop Inventory (Controller) / `inventories/workshop/hosts` (CLI) |
+| Bastion SSH key for RHEL hosts | `~/.ssh/jmvv9key.pem` |
 
 ### Target RHEL Hosts
 
@@ -31,7 +35,9 @@ End-to-end demonstration of managing Red Hat Enterprise Linux servers with Ansib
 | node2 | `node2.example.com` | web | prod |
 | node3 | `node3.example.com` | web | dev |
 
-All hosts run **RHEL 8.7**. Managed user: `ec2-user` with key `~/.ssh/4mrmxkey.pem` on the bastion.
+All hosts run **RHEL 8.7**. Managed user: `ec2-user` with key `~/.ssh/jmvv9key.pem` on the bastion.
+
+> **OpenTLC note:** The full AAP + OpenShift lab (`jmvv9`) ships controller, EDA, and OpenShift — but **RHEL target VMs are not pre-provisioned** in this sandbox type. DNS for `node*.example.com` does not resolve until separate RHEL nodes are added or `/etc/hosts` entries are configured. Job templates launch and connect with the Workshop Credential; jobs fail at SSH until targets exist.
 
 ## Repository Structure
 
@@ -61,6 +67,8 @@ ansible_for_rhel/
 │   ├── self-service-setup.md          # Self-service portal setup guide
 │   ├── configure-demo-job-templates.sh
 │   ├── configure-self-service.sh      # Idempotent self-service RBAC script
+│   ├── setup-rhel-demo-environment.sh # Bootstrap project/templates on fresh AAP
+│   ├── deploy-self-service-portal.sh  # OpenShift portal secrets + Helm prep
 │   ├── demo-template-metadata.json    # Template descriptions for portal
 │   └── patch-rhel-survey.json
 └── monitoring/
@@ -72,13 +80,13 @@ ansible_for_rhel/
 ### 1. Copy the demo to the bastion
 
 ```bash
-scp -r ansible_for_rhel/ student1@ansible-1.4mrmx.sandbox3261.opentlc.com:~/
+scp -r ansible_for_rhel/ lab-user@bastion.jmvv9.sandbox3400.opentlc.com:~/
 ```
 
 ### 2. SSH to the bastion
 
 ```bash
-ssh student1@ansible-1.4mrmx.sandbox3261.opentlc.com
+ssh lab-user@bastion.jmvv9.sandbox3400.opentlc.com
 cd ~/ansible_for_rhel
 ```
 
@@ -233,17 +241,20 @@ Detailed configuration is in:
 - `controller/workflow-setup.md` — chained workflow visualizer
 - `controller/self-service-setup.md` — self-service portal and demo-user RBAC
 
-### Initial Demo Setup Checklist
+### Initial Demo Setup Checklist (full AAP + OpenShift)
 
 | Step | Action | Script / Doc |
 |------|--------|--------------|
-| 1 | Sync **RHEL Demo Project** from GitHub | [job-templates.md](controller/job-templates.md) |
-| 2 | Create DEMO job templates (11–15) | [job-templates.md](controller/job-templates.md) |
-| 3 | Attach Workshop Credential | `controller/configure-demo-job-templates.sh` |
-| 4 | Configure Patch survey | `controller/patch-rhel-survey.json` |
-| 5 | Create workflow pipeline (16) | [workflow-setup.md](controller/workflow-setup.md) |
-| 6 | Configure self-service RBAC | `controller/configure-self-service.sh` |
-| 7 | Verify demo-user template access | [self-service-setup.md](controller/self-service-setup.md) |
+| 1 | SSH to bastion; confirm `oc` access and `jmvv9key.pem` | This guide, Environment |
+| 2 | Bootstrap AAP (project, inventory, templates, RBAC) | `controller/setup-rhel-demo-environment.sh` |
+| 3 | Provision or register RHEL target VMs (`node1`–`node3`) | OpenTLC lab guide / DNS or `/etc/hosts` |
+| 4 | Verify Patch + Deploy job templates launch | Controller UI or API |
+| 5 | Deploy self-service automation portal on OpenShift | `controller/deploy-self-service-portal.sh` |
+| 6 | Update OAuth redirect URI after portal deploy | [self-service-setup.md](controller/self-service-setup.md) |
+| 7 | Configure portal RBAC for demo-user | [self-service-setup.md](controller/self-service-setup.md) |
+| 8 | Verify demo-user sees templates in portal | [self-service-setup.md](controller/self-service-setup.md) |
+
+Legacy controller-only checklist (single VM sandboxes): see [job-templates.md](controller/job-templates.md).
 
 ### Self-Service Portal
 
@@ -251,15 +262,17 @@ Non-admin users can launch DEMO automations without full controller access.
 
 | Mode | URL | Notes |
 |------|-----|-------|
-| Controller templates | `https://ansible-1.4mrmx.sandbox3261.opentlc.com/#/templates` | Works on controller-only sandboxes |
-| Automation Portal | `https://<portal-host>/` | Requires separate portal deployment |
+| AAP Gateway UI | `https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` | Full AAP 2.5 (gateway + controller + EDA) |
+| Controller templates | `https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/#/templates` | Direct controller route |
+| Automation Portal | `https://<portal-route>/` | Deploy via OpenShift Helm (see self-service-setup.md) |
 
 **Demo user:** `demo-user` / `<demo-user-password>` (set via `DEMO_USER_PASSWORD` during setup — not stored in Git)
 
 ```bash
-export CONTROLLER_PASSWORD='<controller-admin-password>'
+export CONTROLLER="https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com"
+export CONTROLLER_TOKEN='<controller-token>'
 export DEMO_USER_PASSWORD='<demo-user-password>'
-./controller/configure-self-service.sh
+./controller/setup-rhel-demo-environment.sh
 ```
 
 All six DEMO templates (patch, OpenSCAP scan/remediate, deploy, verify, and the full workflow pipeline) are exposed with Execute permission. See `controller/self-service-setup.md` for verification steps and automation portal deployment.
@@ -272,17 +285,20 @@ Patch → OpenSCAP Scan → OpenSCAP Remediate → Deploy App → Verify
 
 Launch as **DEMO - RHEL Operations Pipeline** for the full demo from the Controller UI.
 
-### Existing Environment Resources
+### Existing Environment Resources (jmvv9 sandbox)
 
-The sandbox already has:
-- **Workshop Inventory** with groups `web` and `control`
-- **Workshop Credential** (Machine credential for SSH)
-- **RHEL Demo Project** (id: 10) synced from `https://github.com/ronamalka/ansible_for_rhel.git`
-- **DEMO job templates** (ids 11–15) for patch, OpenSCAP, deploy, and verify playbooks
-- **DEMO - RHEL Operations Pipeline** workflow (id: 16)
-- **Self-service** demo user `demo-user` with Execute on DEMO templates (see `controller/self-service-setup.md`)
-- **Ansible official demo project** pointing to RedHatGov/product-demos
-- **SECURITY / Hardening** job template (`linux/hardening.yml`)
+Configured on the OpenTLC full AAP + OpenShift lab:
+
+| Resource | ID / details |
+|----------|----------------|
+| Project | **RHEL Demo Project** (id: 43) → GitHub repo |
+| Inventory | **Workshop Inventory** (id: 34) — hosts node1, node2, node3 |
+| Credential | **Workshop Credential** (id: 35) — `jmvv9key.pem` |
+| Job templates | DEMO Patch (44), Scan (45), Remediate (46), Deploy (47), Verify (48) |
+| Workflow | **DEMO - RHEL Operations Pipeline** (id: 49) |
+| Self-service | demo-user with Execute on templates 44–49 |
+| OAuth app | **Ansible Automation Portal** (id: 1) — update redirect URI after portal deploy |
+| Automation Portal | **Not yet deployed** — requires Helm chart + `registry.redhat.io` access |
 
 ## Demo Timing
 
@@ -326,7 +342,8 @@ If **OpenSCAP Remediate** ran on all `web` hosts before the skip rules were in G
 
 | Issue | Resolution |
 |-------|------------|
-| SSH connection refused | Verify `~/.ssh/4mrmxkey.pem` exists on bastion |
+| SSH connection refused | Verify `~/.ssh/jmvv9key.pem` on bastion; confirm RHEL VM DNS/hosts |
+| Hostname not resolved (`node*.example.com`) | RHEL VMs not provisioned in this lab type — add targets or `/etc/hosts` |
 | `Missing sudo password` on RHEL nodes | CIS remediate removed `/etc/sudoers.d/90-cloud-init-users`; restore VMs via **OpenTLC sandbox reset** (cannot be fixed over SSH without a root password). After reset, run OpenSCAP remediate with **limit `node1`** only; repo skips `sudo_remove_nopasswd`. |
 | OpenSCAP timeout | Increase job template timeout to 3600s; use `--limit node1` |
 | OpenSCAP exit code 2 | Expected on first scan — failures found, not an Ansible error |
