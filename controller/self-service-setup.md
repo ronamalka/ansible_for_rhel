@@ -237,6 +237,7 @@ Sign in with **demo-user** credentials (same as controller). Configure portal RB
 | Portal RBAC for demo-user | **Manual** — assign Demo Self-Service team in portal Administration → RBAC |
 | External DNS | Use `apps.` in `clusterRouterBase`; see **Browser access** above |
 | Known pitfall | Duplicate `catalog.providers.rhaap.production` in merged app-config → `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
+| Known pitfall | Login page offers **Sign in with GitHub** — disable guest auth plugins: `DISABLE_GUEST_AUTH=1 ./controller/deploy-self-service-portal.sh` (included in full deploy) |
 | Automation Dashboard | **Not enabled** — separate product; see `monitoring/demo-narrative-jmvv9-automation-dashboard.md` |
 
 Automated deploy on bastion:
@@ -248,6 +249,8 @@ export AAP_TOKEN="<controller-token>"
 ```
 
 Public OAuth clients require a non-empty `oauth-client-secret` in the OpenShift secret (the script uses a placeholder). OCI plug-in mode requires the `redhat-rhaap-portal-dynamic-plugins-registry-auth` secret built from cluster pull credentials or a local `auth.json`.
+
+The deploy script automatically disables GitHub/GitLab guest auth provider plugins so the login page shows **Sign in with RHAAP** (AAP OAuth) only. OAuth redirect URI is set from the live OpenShift route host (must include `apps.` on OpenTLC sandboxes).
 
 ## Controller-only self-service (fallback)
 
@@ -289,7 +292,8 @@ Should return survey/launch schema (not 403).
 | API 401/403 with admin password | Use `CONTROLLER_TOKEN` instead |
 | User/team create 403 | Create via Gateway UI or controller DB on OCP deployments |
 | demo-user sees no templates | Re-run `configure-self-service.sh`; confirm Execute role |
-| Portal login fails | Enable `ALLOW_OAUTH2_FOR_EXTERNAL_USERS`; verify OAuth redirect URI |
+| Portal login shows GitHub instead of AAP | Helm chart enables `backstage-plugin-auth-backend-module-github-provider` by default; run `DISABLE_GUEST_AUTH=1 ./controller/deploy-self-service-portal.sh` or re-run full deploy script |
+| Portal login fails | Enable `ALLOW_OAUTH2_FOR_EXTERNAL_USERS`; verify OAuth redirect URI matches **route host** (`apps.` domain on OpenTLC) |
 | Portal `CrashLoopBackOff` / `YAMLParseError duplicate production` | Do not merge a second `catalog.providers.rhaap.production` block; run `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 | Portal chart missing | Download from Red Hat Customer Portal or use OpenShift Helm catalog with registry auth |
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |

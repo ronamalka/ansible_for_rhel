@@ -19,6 +19,54 @@ CONTROLLER_TOKEN="${CONTROLLER_TOKEN:-${AAP_TOKEN}}"
 OAUTH_APP_ID="${OAUTH_APP_ID:-1}"
 REPAIR_APP_CONFIG="${REPAIR_APP_CONFIG:-0}"
 
+DYNAMIC_PLUGINS_CM="${DYNAMIC_PLUGINS_CM:-${HELM_RELEASE}-dynamic-plugins}"
+
+disable_guest_auth_providers() {
+  local cm="$1" ns="$2"
+  if ! oc get configmap "${cm}" -n "${ns}" >/dev/null 2>&1; then
+    echo "ConfigMap ${cm} not found in ${ns}; skip guest auth disable" >&2
+    return 0
+  fi
+
+  local tmp
+  tmp="$(mktemp)"
+  oc get configmap "${cm}" -n "${ns}" -o jsonpath='{.data.dynamic-plugins\.yaml}' >"${tmp}"
+
+  python3 - "${tmp}" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+original = path.read_text()
+lines = original.splitlines()
+changed = 0
+for i, line in enumerate(lines):
+    if "package:" not in line:
+        continue
+    if "auth-backend-module-github-provider" not in line and "auth-backend-module-gitlab-provider" not in line:
+        continue
+    j = i - 1
+    while j >= 0 and not lines[j].strip():
+        j -= 1
+    if j >= 0 and "disabled:" in lines[j]:
+        indent = lines[j].split("disabled", 1)[0]
+        if "true" not in lines[j]:
+            lines[j] = f"{indent}disabled: true"
+            changed += 1
+
+text = "\n".join(lines)
+if original.endswith("\n"):
+    text += "\n"
+path.write_text(text)
+print(f"disabled {changed} guest auth provider plugin(s)")
+PY
+
+  oc create configmap "${cm}" \
+    --from-file=dynamic-plugins.yaml="${tmp}" \
+    -n "${ns}" --dry-run=client -o yaml | oc apply -f -
+  rm -f "${tmp}"
+}
+
 repair_app_config_configmap() {
   local cm="$1" ns="$2"
   local script_dir
@@ -90,6 +138,14 @@ if [[ "${REPAIR_APP_CONFIG}" == "1" ]]; then
   exit 0
 fi
 
+if [[ "${DISABLE_GUEST_AUTH}" == "1" ]]; then
+  echo "=== Disabling GitHub/GitLab guest auth providers ==="
+  disable_guest_auth_providers "${DYNAMIC_PLUGINS_CM}" "${OCP_NAMESPACE}"
+  oc rollout restart "deployment/${HELM_RELEASE}" -n "${OCP_NAMESPACE}" || true
+  oc rollout status "deployment/${HELM_RELEASE}" -n "${OCP_NAMESPACE}" --timeout=300s || true
+  exit 0
+fi
+
 values_file="$(mktemp)"
 cat > "${values_file}" <<EOF
 redhat-developer-hub:
@@ -131,6 +187,10 @@ else
 fi
 rm -f "${values_file}"
 
+echo "=== Disable GitHub/GitLab guest auth (RHAAP OAuth only) ==="
+disable_guest_auth_providers "${DYNAMIC_PLUGINS_CM}" "${OCP_NAMESPACE}"
+repair_app_config_configmap "${APP_CONFIG_CM}" "${OCP_NAMESPACE}" || true
+
 portal_host="$(oc get route "${HELM_RELEASE}" -n "${OCP_NAMESPACE}" -o jsonpath='{.spec.host}' 2>/dev/null || true)"
 if [[ -z "${portal_host}" ]]; then
   portal_host="$(oc get route -n "${OCP_NAMESPACE}" -o jsonpath='{.items[0].spec.host}' 2>/dev/null || true)"
@@ -152,11 +212,16 @@ if [[ -n "${portal_host}" && -n "${CONTROLLER_TOKEN}" ]]; then
   echo "OAuth redirect update HTTP ${http_code}: ${redirect_uri}"
 fi
 
+echo "=== Restart portal to load auth config ==="
+oc rollout restart "deployment/${HELM_RELEASE}" -n "${OCP_NAMESPACE}" || true
+oc rollout status "deployment/${HELM_RELEASE}" -n "${OCP_NAMESPACE}" --timeout=300s || true
+
 cat <<EOF
 
 === Next steps ===
 1. Configure portal RBAC in Administration → RBAC for demo-user / Demo Self-Service team
-2. Sign in at ${portal_url} with demo-user credentials
+2. Sign in at ${portal_url} with demo-user / admin AAP credentials (not GitHub)
 3. If duplicate app-config keys cause CrashLoopBackOff: REPAIR_APP_CONFIG=1 $0
+4. If GitHub sign-in reappears after helm upgrade: DISABLE_GUEST_AUTH=1 $0
 
 EOF

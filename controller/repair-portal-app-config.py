@@ -8,27 +8,34 @@ from pathlib import Path
 
 
 def repair(text: str) -> tuple[str, bool]:
-    block = re.search(
-        r"(?ms)^(\s+)production:\n(\1\s+orgs:\n(?:\1\s+- .+\n)+)",
+    match = re.search(
+        r"(?ms)(^catalog:\n.*?^  providers:\n    rhaap:\n)(.*?)(?=^  rules:)",
         text,
     )
-    if not block:
+    if not match:
         return text, False
 
-    indent, orgs_block = block.group(1), block.group(0)
-    if not re.search(rf"(?m)^{re.escape(indent)}'production':\s*$", text):
+    rhaap_body = match.group(2)
+    if not re.search(r"(?m)^      'production':\s*$", rhaap_body):
+        return text, False
+    if not re.search(r"(?m)^      production:\s*$", rhaap_body):
         return text, False
 
-    text = text.replace(orgs_block, "", 1)
-    text = text.replace(f"{indent}'production':", f"{indent}production:", 1)
+    minimal = re.search(
+        r"(?ms)^      production:\n        orgs:\n        - Default\n",
+        rhaap_body,
+    )
+    if not minimal:
+        return text, False
 
-    rhaap = re.search(r"(?ms)^  providers:\n    rhaap:\n(.*?)(?=^  rules:)", text)
-    if not rhaap:
-        raise ValueError("catalog.providers.rhaap section missing")
-    if len(re.findall(r"^\s+production:\s*$", rhaap.group(1), re.M)) > 1:
+    new_rhaap = rhaap_body.replace(minimal.group(0), "", 1)
+    new_rhaap = new_rhaap.replace("'production':", "production:", 1)
+    new_text = text[: match.start(2)] + new_rhaap + text[match.end(2) :]
+
+    if len(re.findall(r"(?m)^      production:\s*$", new_rhaap)) > 1:
         raise ValueError("duplicate production keys remain under catalog.providers.rhaap")
 
-    return text, True
+    return new_text, True
 
 
 def main() -> int:
