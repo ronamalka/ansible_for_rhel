@@ -356,3 +356,6 @@ If **OpenSCAP Remediate** ran on all `web` hosts before the skip rules were in G
 - [Ansible RHEL Workshop Exercises](https://labs.demoredhat.com/exercises/ansible_rhel/)
 - [OpenSCAP RHEL 8 Guide](https://www.redhat.com/en/blog/openscap-rhel8)
 - [Ansible Automation Platform Docs](https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform)
+
+
+See [cross-sandbox-connectivity.md](controller/cross-sandbox-connectivity.md) for legacy sandbox connectivity notes.
