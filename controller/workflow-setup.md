@@ -16,6 +16,15 @@ flowchart LR
     D -->|On Success| E[Verify Web Application]
 ```
 
+
+### Configured on sandbox
+
+| Resource | Value |
+|----------|-------|
+| Workflow job template | **DEMO - RHEL Operations Pipeline** (id: 16) |
+| Inventory | Workshop Inventory (id: 2) |
+| Node chain | Job templates 11 → 12 → 13 → 14 → 15 (On Success) |
+
 ### Create the Workflow
 
 1. Go to **Automation Execution → Templates → Create template → Create workflow job template**

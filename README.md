@@ -224,6 +224,7 @@ The sandbox already has:
 - **Workshop Credential** (Machine credential for SSH)
 - **RHEL Demo Project** (id: 10) synced from `https://github.com/ronamalka/ansible_for_rhel.git`
 - **DEMO job templates** (ids 11–15) for patch, OpenSCAP, deploy, and verify playbooks
+- **DEMO - RHEL Operations Pipeline** workflow (id: 16)
 - **Ansible official demo project** pointing to RedHatGov/product-demos
 - **SECURITY / Hardening** job template (`linux/hardening.yml`)
 
