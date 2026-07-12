@@ -290,7 +290,7 @@ export AAP_TOKEN="<controller-token>"
 ./controller/deploy-self-service-portal.sh
 ```
 
-Public OAuth clients require a non-empty `oauth-client-secret` in the OpenShift secret (the script uses a placeholder). OCI plug-in mode requires the `redhat-rhaap-portal-dynamic-plugins-registry-auth` secret built from cluster pull credentials or a local `auth.json`.
+Gateway **public** OAuth apps must use an **empty** `oauth-client-secret` in `secrets-rhaap-portal` (sending `public-client-no-secret` causes `invalid_client` and the UI error **Failed to post data**). **Confidential** Gateway apps require the real secret from `/api/gateway/v1/applications/` (set `OAUTH_CLIENT_SECRET` before deploy). OCI plug-in mode requires the `redhat-rhaap-portal-dynamic-plugins-registry-auth` secret built from cluster pull credentials or a local `auth.json`.
 
 The deploy script automatically disables GitHub/GitLab guest auth provider plugins so the login page shows **Sign in with RHAAP** (AAP OAuth) only. OAuth redirect URI is set from the live OpenShift route host (must include `apps.` on OpenTLC sandboxes).
 
@@ -355,7 +355,7 @@ Expected: **15** rows.
 | demo-user sees no templates (controller) | Re-run `configure-self-service.sh`; confirm Execute role |
 | demo-user sees no templates (portal) | Run `./controller/configure-portal-rbac.sh` on bastion; confirm 15 Casbin rules; sign in with RHAAP OAuth |
 | Portal login shows GitHub instead of AAP | Helm chart enables `backstage-plugin-auth-backend-module-github-provider` by default; run `DISABLE_GUEST_AUTH=1 ./controller/deploy-self-service-portal.sh` or re-run full deploy script |
-| Portal login fails | Use **Gateway** OAuth `client_id` (`/api/gateway/v1/applications/`), not Controller; enable `ALLOW_OAUTH2_FOR_EXTERNAL_USERS`; verify redirect URI matches **route host** (`apps.` on OpenTLC) |
+| Portal login fails / **Failed to post data** | Check `backstage-backend` logs for `invalid_client` on `/o/token/`; align `oauth-client-id` with **Gateway** app (`curl -sk -u admin:$PASS $AAP_HOST_URL/api/gateway/v1/applications/`); public apps need empty `oauth-client-secret`; confidential apps need the matching secret; enable `ALLOW_OAUTH2_FOR_EXTERNAL_USERS`; redirect URI must match portal route (`apps.` on OpenTLC) |
 | Portal `CrashLoopBackOff` / `YAMLParseError duplicate production` | Do not merge a second `catalog.providers.rhaap.production` block; run `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 | Portal chart missing | Download from Red Hat Customer Portal or use OpenShift Helm catalog with registry auth |
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |
