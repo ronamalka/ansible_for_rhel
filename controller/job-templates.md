@@ -160,7 +160,10 @@ curl http://node3.example.com
 
 ```bash
 CONTROLLER="https://ansible-1.4mrmx.sandbox3261.opentlc.com"
-AUTH="admin:<REDACTED>"
+# Set from environment — never commit credentials
+export CONTROLLER_USER="${CONTROLLER_USER:-admin}"
+export CONTROLLER_PASSWORD="${CONTROLLER_PASSWORD:?set CONTROLLER_PASSWORD}"
+AUTH="${CONTROLLER_USER}:${CONTROLLER_PASSWORD}"
 
 # List inventories
 curl -sk -u "$AUTH" "$CONTROLLER/api/v2/inventories/"

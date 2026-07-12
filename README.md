@@ -17,9 +17,9 @@ End-to-end demonstration of managing Red Hat Enterprise Linux servers with Ansib
 | Resource | Value |
 |----------|-------|
 | Controller | `https://ansible-1.4mrmx.sandbox3261.opentlc.com` |
-| Controller user | `admin` / `<REDACTED>` |
+| Controller user | `admin` (password: see lab environment or Ansible Vault) |
 | Bastion SSH | `ssh student1@ansible-1.4mrmx.sandbox3261.opentlc.com` |
-| Bastion password | `<REDACTED>` |
+| Bastion password | `<bastion-password>` (see lab environment) |
 | Git repository | `https://github.com/ronamalka/ansible_for_rhel` |
 | Inventory | Workshop Inventory (Controller) / `inventories/workshop/hosts` (CLI) |
 
