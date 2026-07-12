@@ -1,0 +1,9 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: demo-portal-templates
+  description: Custom self-service portal templates for RHEL demo automations
+spec:
+  type: url
+  targets:
+    - ./patch-rhel-package-summary.yaml

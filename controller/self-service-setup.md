@@ -346,6 +346,56 @@ oc exec -n rhaap-portal redhat-rhaap-portal-postgresql-0 -- \
 
 Expected: **15** rows.
 
+## Portal patch job output (per-node packages)
+
+Auto-generated portal templates (synced from Controller job templates) use the `rhaap:launch-job-template` action. During **Create Task**, the live scaffolder log shows only high-level status:
+
+```
+Beginning step DEMO - Patch RHEL Servers
+Job launched with ID: 49
+Job 49 completed with status: successful
+Finished step DEMO - Patch RHEL Servers
+```
+
+Ansible `debug` output from the playbook appears in **Controller job stdout**, not in that live log. The auto-generated template **output** page shows job ID, status, and an AAP link — not package names.
+
+### Approach
+
+| Layer | What it does |
+|-------|----------------|
+| `roles/rhel_patching` | Per-host banners plus `DEMO_PATCH_PORTAL` marker lines; sets `rhel_patching_updated_package_names` |
+| `playbooks/patch_rhel.yml` | Final localhost play prints `DEMO PATCH PACKAGE SUMMARY (portal)` block for all `web` hosts |
+| Custom portal template | `controller/portal-templates/patch-rhel-package-summary.yaml` — launches template 44, fetches job stdout via Controller API, displays it in portal **output** |
+
+### Register the package-summary portal template (once per portal)
+
+1. Sign in to the portal as an AAP administrator.
+2. **Templates** → **Add template**.
+3. Git URL:
+
+   `https://github.com/ronamalka/ansible_for_rhel/blob/main/controller/portal-templates/catalog-info.yaml`
+
+4. Click **Analyze** → **Import**.
+5. Grant `demo-portal-users` catalog read on the new template (or rely on tag filter if configured).
+
+Presenters launch **DEMO - Patch RHEL Servers (with package summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
+
+```
+===== DEMO PATCH PACKAGE SUMMARY (portal) =====
+node1: openssl-libs, kernel-core
+node2: none
+===== END DEMO PATCH PACKAGE SUMMARY (portal) =====
+```
+
+### Sync Controller project after Git push
+
+On the bastion (with `CONTROLLER_TOKEN` or `CONTROLLER_PASSWORD` set):
+
+```bash
+./controller/sync-demo-project.sh
+# PROJECT_ID=43 by default on jmvv9
+```
+
 ## Troubleshooting
 
 | Issue | Resolution |
@@ -359,6 +409,7 @@ Expected: **15** rows.
 | Portal `CrashLoopBackOff` / `YAMLParseError duplicate production` | Do not merge a second `catalog.providers.rhaap.production` block; run `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 | Portal chart missing | Download from Red Hat Customer Portal or use OpenShift Helm catalog with registry auth |
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |
+| Portal shows job ID only, no packages | Use custom template **DEMO - Patch RHEL Servers (with package summary)**; auto-generated templates do not fetch stdout |
 
 ## References
 

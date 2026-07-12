@@ -3,7 +3,7 @@
   "job_templates": {
     "11": {
       "name": "DEMO - Patch RHEL Servers",
-      "description": "Apply package updates to RHEL web servers. Survey options: security-only patching and optional reboot."
+      "description": "Apply package updates to RHEL web servers. Job stdout and the portal package-summary template show per-node package names. Survey options: security-only patching and optional reboot."
     },
     "12": {
       "name": "DEMO - OpenSCAP Scan",

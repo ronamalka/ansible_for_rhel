@@ -6,11 +6,18 @@
   register: rhel_patching_pending_updates
   changed_when: false
 
+- name: Capture pending package names
+  ansible.builtin.set_fact:
+    rhel_patching_pending_package_names: >-
+      {{ rhel_patching_pending_updates.results
+         | map(attribute='name')
+         | list }}
+
 - name: Report pending package updates
   ansible.builtin.debug:
     msg:
-      - "Host: {{ inventory_hostname }}"
-      - "Pending package updates ({{ rhel_patching_pending_updates.results | length }}): {{ rhel_patching_pending_updates.results | map(attribute='name') | list | join(', ') if (rhel_patching_pending_updates.results | length > 0) else 'none' }}"
+      - "========== PATCH PENDING: {{ inventory_hostname }} =========="
+      - "Pending updates ({{ rhel_patching_pending_package_names | length }}): {{ rhel_patching_pending_package_names | join(', ') if (rhel_patching_pending_package_names | length > 0) else 'none' }}"
 
 - name: Update all packages
   ansible.builtin.package:
@@ -28,6 +35,30 @@
     exclude: "{{ patch_exclude_packages }}"
   register: rhel_patching_security_result
   when: patch_security_only | bool
+
+- name: Resolve updated package names from module results
+  ansible.builtin.set_fact:
+    rhel_patching_updated_package_names: >-
+      {{
+        (
+          (rhel_patching_result.results | default([]) | selectattr('changed', 'defined') | selectattr('changed') | map(attribute='name') | list)
+          + (rhel_patching_security_result.results | default([]) | selectattr('changed', 'defined') | selectattr('changed') | map(attribute='name') | list)
+        )
+        | unique
+      }}
+
+- name: Fall back to pending list when package task changed without per-package results
+  ansible.builtin.set_fact:
+    rhel_patching_updated_package_names: "{{ rhel_patching_pending_package_names }}"
+  when:
+    - rhel_patching_updated_package_names | length == 0
+    - (rhel_patching_result.changed | default(false)) or (rhel_patching_security_result.changed | default(false))
+    - rhel_patching_pending_package_names | length > 0
+
+- name: Default updated package names when nothing changed
+  ansible.builtin.set_fact:
+    rhel_patching_updated_package_names: []
+  when: rhel_patching_updated_package_names is not defined
 
 - name: Check if reboot is required
   ansible.builtin.command:
@@ -47,7 +78,8 @@
 - name: Report patching summary
   ansible.builtin.debug:
     msg:
-      - "Host: {{ inventory_hostname }}"
+      - "========== PATCH SUMMARY: {{ inventory_hostname }} =========="
       - "Security-only mode: {{ patch_security_only }}"
       - "Reboot required: {{ rhel_patching_reboot_check.rc == 1 }}"
-      - "Packages updated: {{ rhel_patching_pending_updates.results | map(attribute='name') | list | join(', ') if ((rhel_patching_result.changed | default(false)) or (rhel_patching_security_result.changed | default(false))) and (rhel_patching_pending_updates.results | length > 0) else 'none' }}"
+      - "Packages updated: {{ rhel_patching_updated_package_names | join(', ') if (rhel_patching_updated_package_names | length > 0) else 'none' }}"
+      - "DEMO_PATCH_PORTAL | host={{ inventory_hostname }} | packages={{ rhel_patching_updated_package_names | join(',') if (rhel_patching_updated_package_names | length > 0) else 'none' }}"

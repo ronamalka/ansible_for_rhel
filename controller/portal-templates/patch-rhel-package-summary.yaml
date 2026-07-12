@@ -1,0 +1,76 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: demo-patch-rhel-package-summary
+  title: DEMO - Patch RHEL Servers (with package summary)
+  description: >-
+    Patch RHEL web servers and show per-node package changes in the portal
+    output after the job completes. Uses the same Controller job template as
+    the auto-generated Patch RHEL tile.
+  tags:
+    - demo-self-service
+    - ansible
+    - patching
+spec:
+  owner: group:default/demo-self-service
+  type: service
+
+  parameters:
+    - title: Patch options
+      required:
+        - security_only
+        - reboot_after_patch
+      properties:
+        security_only:
+          title: Security updates only?
+          description: When enabled, only security-related packages are updated.
+          type: string
+          enum:
+            - "false"
+            - "true"
+          default: "false"
+        reboot_after_patch:
+          title: Reboot after patching?
+          description: Reboot hosts when kernel or other updates require it (needs-restarting -r).
+          type: string
+          enum:
+            - "false"
+            - "true"
+          default: "false"
+
+  steps:
+    - id: launch-job
+      name: DEMO - Patch RHEL Servers
+      action: rhaap:launch-job-template
+      input:
+        token: ${{ secrets.aapToken }}
+        values:
+          template: DEMO - Patch RHEL Servers
+          extraVariables:
+            security_only: ${{ parameters.security_only }}
+            reboot_after_patch: ${{ parameters.reboot_after_patch }}
+
+    - id: fetch-stdout
+      name: Fetch patch job output
+      action: fetch:plain
+      input:
+        url: https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/api/v2/jobs/${{ steps['launch-job'].output.data.id }}/stdout/?format=txt
+        requestHeaders:
+          Authorization: Bearer ${{ secrets.aapToken }}
+
+  output:
+    text:
+      - title: Patch job completed
+        content: |
+          **Job ID:** ${{ steps['launch-job'].output.data.id }}
+          **Status:** ${{ steps['launch-job'].output.data.status }}
+
+          Per-node package changes appear in the summary block below (also visible in Controller job stdout).
+      - title: Per-node package changes
+        content: |
+          ```
+          ${{ steps['fetch-stdout'].output.body }}
+          ```
+    links:
+      - title: View full job in Ansible Automation Platform
+        url: ${{ steps['launch-job'].output.data.url }}

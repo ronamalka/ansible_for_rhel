@@ -7,3 +7,17 @@
     patch_reboot: "{{ reboot_after_patch | default(false) }}"
   roles:
     - rhel_patching
+
+- name: Aggregate patch results for portal and job stdout
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Print portal-visible per-node package summary
+      ansible.builtin.debug:
+        msg: |
+          ===== DEMO PATCH PACKAGE SUMMARY (portal) =====
+          {% for host in groups['web'] | sort %}
+          {{ host }}: {{ hostvars[host].rhel_patching_updated_package_names | default([]) | join(', ') if (hostvars[host].rhel_patching_updated_package_names | default([]) | length > 0) else 'none' }}
+          {% endfor %}
+          ===== END DEMO PATCH PACKAGE SUMMARY (portal) =====
+      run_once: true
