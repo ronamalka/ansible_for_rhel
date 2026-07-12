@@ -187,14 +187,15 @@ print(json.dumps(d))
 }
 
 echo "=== Ensuring DEMO job templates ==="
+T_SEED=$(create_job_template "DEMO - Seed Patch Demo Packages" "playbooks/seed_patch_demo.yml" "web" 0 "" false)
 T_PATCH=$(create_job_template "DEMO - Patch RHEL Servers" "playbooks/patch_rhel.yml" "web" 0 "" false)
 T_SCAN=$(create_job_template "DEMO - OpenSCAP Scan" "playbooks/openscap_scan.yml" "web" 1800 "scan" true)
 T_REM=$(create_job_template "DEMO - OpenSCAP Remediate" "playbooks/openscap_remediate.yml" "web" 3600 "remediate" true)
 T_DEP=$(create_job_template "DEMO - Deploy Web Application" "playbooks/deploy_application.yml" "web" 0 "" true)
 T_VER=$(create_job_template "DEMO - Verify Web Application" "playbooks/verify_application.yml" "web" 0 "" true)
-echo "Template IDs: patch=${T_PATCH} scan=${T_SCAN} remediate=${T_REM} deploy=${T_DEP} verify=${T_VER}"
+echo "Template IDs: seed=${T_SEED} patch=${T_PATCH} scan=${T_SCAN} remediate=${T_REM} deploy=${T_DEP} verify=${T_VER}"
 
-for tid in ${T_PATCH} ${T_SCAN} ${T_REM} ${T_DEP} ${T_VER}; do
+for tid in ${T_SEED} ${T_PATCH} ${T_SCAN} ${T_REM} ${T_DEP} ${T_VER}; do
   code=$(api_post "/api/v2/job_templates/${tid}/credentials/" "{\"id\": ${cred_id}}")
   echo "Attached credential to template ${tid} (HTTP ${code})"
 done
@@ -224,7 +225,7 @@ echo "Workflow id: ${wf_id}"
 # Workflow nodes (recreate if empty)
 node_count=$(api_get "/api/v2/workflow_job_templates/${wf_id}/workflow_nodes/" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count',0))")
 if [[ "${node_count}" == "0" ]]; then
-  declare -a NODES=(${T_PATCH} ${T_SCAN} ${T_REM} ${T_DEP} ${T_VER})
+  declare -a NODES=(${T_SEED} ${T_PATCH} ${T_SCAN} ${T_REM} ${T_DEP} ${T_VER})
   prev=""
   for i in "${!NODES[@]}"; do
     uid="${NODES[$i]}"
@@ -248,7 +249,7 @@ for r in json.load(sys.stdin)['results']:
 fi
 
 export CONTROLLER CONTROLLER_USER CONTROLLER_PASSWORD CONTROLLER_TOKEN DEMO_USER_PASSWORD
-export DEMO_TEMPLATE_IDS="${T_PATCH} ${T_SCAN} ${T_REM} ${T_DEP} ${T_VER}"
+export DEMO_TEMPLATE_IDS="${T_SEED} ${T_PATCH} ${T_SCAN} ${T_REM} ${T_DEP} ${T_VER}"
 export WORKFLOW_TEMPLATE_ID="${wf_id}"
 export WORKSHOP_CREDENTIAL_ID="${cred_id}"
 
@@ -274,7 +275,7 @@ cat <<EOF
 Project id:        ${project_id}
 Inventory id:      ${inventory_id}
 Credential id:     ${cred_id}
-Job templates:     ${T_PATCH} ${T_SCAN} ${T_REM} ${T_DEP} ${T_VER}
+Job templates:     ${T_SEED} ${T_PATCH} ${T_SCAN} ${T_REM} ${T_DEP} ${T_VER}
 Workflow id:       ${wf_id}
 Controller URL:    ${CONTROLLER}
 EOF

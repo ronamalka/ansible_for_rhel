@@ -19,6 +19,15 @@
       "variable": "reboot_after_patch",
       "choices": ["false", "true"],
       "default": "false"
+    },
+    {
+      "question_name": "Prepare demo updates first?",
+      "question_description": "Downgrade host-specific packages so the patch job has visible pending updates (idempotent; skips packages already pending).",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "seed_demo_packages",
+      "choices": ["false", "true"],
+      "default": "false"
     }
   ]
 }

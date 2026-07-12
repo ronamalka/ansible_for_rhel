@@ -1,0 +1,20 @@
+---
+- name: Seed demo patch packages on RHEL web servers
+  hosts: web
+  become: true
+  roles:
+    - demo_patch_seed
+
+- name: Aggregate seed results for portal and job stdout
+  hosts: web
+  gather_facts: false
+  tasks:
+    - name: Print portal-visible per-node seed summary
+      ansible.builtin.debug:
+        msg: |
+          ===== DEMO PATCH SEED SUMMARY (portal) =====
+          {% for host in groups['web'] | sort %}
+          {{ host }}: downgraded={{ hostvars[host].demo_patch_seed_downgraded_names | default([]) | join(', ') if (hostvars[host].demo_patch_seed_downgraded_names | default([]) | length > 0) else 'none' }} | pending={{ hostvars[host].demo_patch_seed_already_pending_names | default([]) | join(', ') if (hostvars[host].demo_patch_seed_already_pending_names | default([]) | length > 0) else 'none' }}
+          {% endfor %}
+          ===== END DEMO PATCH SEED SUMMARY (portal) =====
+      run_once: true

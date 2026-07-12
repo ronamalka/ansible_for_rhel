@@ -1,3 +1,9 @@
 ---
 # node2 is the production web server in this demo environment.
 stage: prod
+
+demo_patch_seed_packages:
+  - name: sudo
+    nevra: sudo-1.9.5p2-9.el9
+  - name: gzip
+    nevra: gzip-1.10-9.el9_0

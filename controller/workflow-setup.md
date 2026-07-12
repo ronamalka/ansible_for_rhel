@@ -10,7 +10,8 @@ This workflow chains the demo job templates into a single end-to-end automation 
 
 ```mermaid
 flowchart LR
-    A[Patch RHEL Servers] -->|On Success| B[OpenSCAP Scan]
+    S[Seed Patch Demo Packages] -->|On Success| A[Patch RHEL Servers]
+    A -->|On Success| B[OpenSCAP Scan]
     B -->|On Success| C[OpenSCAP Remediate]
     C -->|On Success| D[Deploy Web Application]
     D -->|On Success| E[Verify Web Application]
@@ -23,8 +24,10 @@ flowchart LR
 |----------|-------|
 | Workflow job template | **DEMO - RHEL Operations Pipeline** (id: 49 on jmvv9) |
 | Inventory | Workshop Inventory (id: 34) |
-| Node chain | Job templates 44 → 45 → 46 → 47 → 48 (On Success) |
+| Node chain | Job templates Seed → 44 → 45 → 46 → 47 → 48 (On Success) |
 | Self-service | Exposed to `demo-user` via `configure-self-service.sh` |
+
+After syncing the Git project, run `controller/configure-demo-seed-template.sh` to create the seed template and prepend it to workflow 49.
 
 ### Self-service launch
 
@@ -47,18 +50,19 @@ See `controller/self-service-setup.md` for RBAC setup and verification.
 
 | Step | Node Type | Template | Run Condition |
 |------|-----------|----------|---------------|
-| 1 | Job Template | DEMO - Patch RHEL Servers | Always (start node) |
-| 2 | Job Template | DEMO - OpenSCAP Scan | On Success |
-| 3 | Job Template | DEMO - OpenSCAP Remediate | On Success |
-| 4 | Job Template | DEMO - Deploy Web Application | On Success |
-| 5 | Job Template | DEMO - Verify Web Application | On Success |
+| 1 | Job Template | DEMO - Seed Patch Demo Packages | Always (start node) |
+| 2 | Job Template | DEMO - Patch RHEL Servers | On Success |
+| 3 | Job Template | DEMO - OpenSCAP Scan | On Success |
+| 4 | Job Template | DEMO - OpenSCAP Remediate | On Success |
+| 5 | Job Template | DEMO - Deploy Web Application | On Success |
+| 6 | Job Template | DEMO - Verify Web Application | On Success |
 
 ### Workflow Tips for Demos
 
 - **Show the visualizer** before launching — explain how operations teams chain patching, compliance, and deployment.
 - **Launch from the workflow** rather than individual templates to demonstrate orchestration.
 - **Drill into failed nodes** — if OpenSCAP remediation times out, show how the workflow stops and surfaces the failure.
-- **Use surveys on the Deploy node** — add survey questions to the Deploy Web Application template so presenters can customize content at launch time.
+- **Use surveys on the Patch node** — enable **Prepare demo updates first?** when launching patch alone after a prior demo (workflow seed step handles this automatically).
 
 ### Optional: Parallel Scanning
 

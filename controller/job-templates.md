@@ -61,6 +61,22 @@ See `controller/self-service-setup.md` for portal deployment, verification, and 
 
 Create each template via **Automation Execution → Templates → Create template → Create job template**.
 
+### 0. Seed Patch Demo Packages
+
+| Parameter | Value |
+|-----------|-------|
+| Name | DEMO - Seed Patch Demo Packages |
+| Inventory | Workshop Inventory |
+| Project | RHEL Demo Project |
+| Playbook | `playbooks/seed_patch_demo.yml` |
+| Credentials | Workshop Credential |
+| Limit | `web` |
+| Privilege Escalation | Enabled |
+
+Downgrades host-specific packages defined in `inventories/workshop/host_vars/node1.yml` and `node2.yml`. Idempotent: skips packages that already appear in `dnf list updates`. Job stdout includes `DEMO_PATCH_SEED` portal markers and a `DEMO PATCH SEED SUMMARY (portal)` block.
+
+**jmvv9 template id:** assigned at create time (run `controller/configure-demo-seed-template.sh` after project sync).
+
 ### 1. Patch RHEL Servers
 
 | Parameter | Value |
@@ -81,6 +97,9 @@ Create each template via **Automation Execution → Templates → Create templat
 |-------|----------|------|---------|---------|
 | Security updates only? | `security_only` | Multiple Choice | `false`, `true` | `false` |
 | Reboot after patching? | `reboot_after_patch` | Multiple Choice | `false`, `true` | `false` |
+| Prepare demo updates first? | `seed_demo_packages` | Multiple Choice | `false`, `true` | `false` |
+
+When **Prepare demo updates first?** is `true`, the playbook runs the `demo_patch_seed` role before patching (same behavior as the standalone seed template).
 
 Survey answers are strings (`"true"` / `"false"`). The playbook maps them with `| default(false)` and the role evaluates them with `| bool`, so choosing **true** for reboot runs `ansible.builtin.reboot` only when `needs-restarting -r` reports a reboot is required.
 
@@ -181,8 +200,8 @@ The environment already includes:
 | Project | Ansible official demo project → `https://github.com/RedHatGov/product-demos` |
 | Project | **RHEL Demo Project** (id: 10) → `https://github.com/ronamalka/ansible_for_rhel.git` |
 | Job Template | SECURITY / Hardening → `linux/hardening.yml` |
-| Job Templates | DEMO - Patch RHEL Servers (11), OpenSCAP Scan (12), OpenSCAP Remediate (13), Deploy Web Application (14), Verify Web Application (15) |
-| Self-service | demo-user with Execute on templates 11–16 (see `self-service-setup.md`) |
+| Job Templates | DEMO - Seed Patch Demo Packages, DEMO - Patch RHEL Servers (11), OpenSCAP Scan (12), OpenSCAP Remediate (13), Deploy Web Application (14), Verify Web Application (15) |
+| Self-service | demo-user with Execute on templates 11–17 (see `self-service-setup.md`) |
 
 You can keep the existing hardening template for comparison alongside the DEMO templates from this repo.
 

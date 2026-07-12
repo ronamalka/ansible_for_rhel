@@ -9,8 +9,8 @@ CONTROLLER_PASSWORD="${CONTROLLER_PASSWORD:-}"
 CONTROLLER_TOKEN="${CONTROLLER_TOKEN:-}"
 
 WORKSHOP_CREDENTIAL_ID="${WORKSHOP_CREDENTIAL_ID:-4}"
-# DEMO template IDs on the sandbox (Patch, Scan, Remediate, Deploy, Verify)
-DEMO_TEMPLATE_IDS="${DEMO_TEMPLATE_IDS:-11 12 13 14 15}"
+# DEMO template IDs on the sandbox (Seed, Patch, Scan, Remediate, Deploy, Verify)
+DEMO_TEMPLATE_IDS="${DEMO_TEMPLATE_IDS:-11 12 13 14 15 16}"
 
 if [[ -n "${CONTROLLER_TOKEN}" ]]; then
   auth=(-H "Authorization: Bearer ${CONTROLLER_TOKEN}")

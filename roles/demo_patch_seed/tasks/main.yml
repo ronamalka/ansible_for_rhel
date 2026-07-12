@@ -1,0 +1,57 @@
+---
+- name: Validate seed package list does not include protected packages
+  ansible.builtin.assert:
+    that:
+      - item.name not in demo_patch_seed_protected_packages
+    fail_msg: "Refusing to downgrade protected package {{ item.name }} (httpd stack must stay up)."
+  loop: "{{ demo_patch_seed_packages }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: demo_patch_seed_packages | length > 0
+
+- name: List pending package updates
+  ansible.builtin.dnf:
+    list: updates
+  register: demo_patch_seed_pending_updates
+  changed_when: false
+  when: demo_patch_seed_packages | length > 0
+
+- name: Capture pending update names
+  ansible.builtin.set_fact:
+    demo_patch_seed_pending_names: >-
+      {{ demo_patch_seed_pending_updates.results
+         | map(attribute='name')
+         | list }}
+  when: demo_patch_seed_packages | length > 0
+
+- name: Initialize seed result lists
+  ansible.builtin.set_fact:
+    demo_patch_seed_downgraded_names: []
+    demo_patch_seed_already_pending_names: []
+    demo_patch_seed_skipped_names: []
+  when: demo_patch_seed_packages | length > 0
+
+- name: Seed demo patch packages (downgrade only when already at latest)
+  ansible.builtin.include_tasks: seed_one_package.yml
+  loop: "{{ demo_patch_seed_packages }}"
+  loop_control:
+    loop_var: seed_package
+    label: "{{ seed_package.name }}"
+  when: demo_patch_seed_packages | length > 0
+
+- name: Default seed result lists when no packages configured
+  ansible.builtin.set_fact:
+    demo_patch_seed_downgraded_names: []
+    demo_patch_seed_already_pending_names: []
+    demo_patch_seed_skipped_names: []
+  when: demo_patch_seed_packages | length == 0
+
+- name: Report seed summary
+  ansible.builtin.debug:
+    msg:
+      - "========== PATCH SEED: {{ inventory_hostname }} =========="
+      - "Configured packages: {{ demo_patch_seed_packages | map(attribute='name') | list | join(', ') if (demo_patch_seed_packages | length > 0) else 'none' }}"
+      - "Downgraded now: {{ demo_patch_seed_downgraded_names | join(', ') if (demo_patch_seed_downgraded_names | length > 0) else 'none' }}"
+      - "Already pending update: {{ demo_patch_seed_already_pending_names | join(', ') if (demo_patch_seed_already_pending_names | length > 0) else 'none' }}"
+      - "Skipped: {{ demo_patch_seed_skipped_names | join(', ') if (demo_patch_seed_skipped_names | length > 0) else 'none' }}"
+      - "DEMO_PATCH_SEED | host={{ inventory_hostname }} | downgraded={{ demo_patch_seed_downgraded_names | join(',') if (demo_patch_seed_downgraded_names | length > 0) else 'none' }} | pending={{ demo_patch_seed_already_pending_names | join(',') if (demo_patch_seed_already_pending_names | length > 0) else 'none' }}"

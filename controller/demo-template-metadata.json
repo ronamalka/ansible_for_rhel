@@ -2,30 +2,34 @@
   "label": "demo-self-service",
   "job_templates": {
     "11": {
-      "name": "DEMO - Patch RHEL Servers",
-      "description": "Apply package updates to RHEL web servers. Job stdout and the portal package-summary template show per-node package names. Survey options: security-only patching and optional reboot."
+      "name": "DEMO - Seed Patch Demo Packages",
+      "description": "Downgrade host-specific packages so DEMO patch shows per-node pending updates. Idempotent; stdout includes DEMO_PATCH_SEED portal markers."
     },
     "12": {
+      "name": "DEMO - Patch RHEL Servers",
+      "description": "Apply package updates to RHEL web servers. Job stdout and the portal package-summary template show per-node package names. Survey options: security-only patching, optional reboot, and optional pre-seed of demo updates."
+    },
+    "13": {
       "name": "DEMO - OpenSCAP Scan",
       "description": "Run CIS OpenSCAP compliance scan on RHEL web servers and generate HTML/XML reports."
     },
-    "13": {
+    "14": {
       "name": "DEMO - OpenSCAP Remediate",
       "description": "Remediate auto-fixable CIS controls using a demo tailored profile; stdout shows full CIS baseline (~97%) and demo profile before/after scores (target 100%)."
     },
-    "14": {
+    "15": {
       "name": "DEMO - Deploy Web Application",
       "description": "Deploy Apache httpd with environment-specific content on RHEL web servers. Job stdout and the portal deploy-summary template show per-node packages, stage, services, URL, and content."
     },
-    "15": {
+    "16": {
       "name": "DEMO - Verify Web Application",
       "description": "Verify deployed web applications return HTTP 200 with expected content. Job stdout and the portal verify-summary template show per-node URL, HTTP status, stage, and content snippet."
     }
   },
   "workflow_job_templates": {
-    "16": {
+    "17": {
       "name": "DEMO - RHEL Operations Pipeline",
-      "description": "End-to-end RHEL operations pipeline: patch, OpenSCAP scan, remediate, deploy web app, and verify."
+      "description": "End-to-end RHEL operations pipeline: seed patch demo packages, patch, OpenSCAP scan, remediate, deploy web app, and verify."
     }
   }
 }

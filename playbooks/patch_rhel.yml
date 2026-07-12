@@ -1,4 +1,13 @@
 ---
+- name: Seed demo patch packages before patching
+  hosts: web
+  become: true
+  tasks:
+    - name: Run demo patch seed role when survey requests it
+      ansible.builtin.include_role:
+        name: demo_patch_seed
+      when: seed_demo_packages | default(false) | bool
+
 - name: Patch RHEL web servers
   hosts: web
   become: true

@@ -1,0 +1,36 @@
+---
+- name: Skip protected package
+  ansible.builtin.set_fact:
+    demo_patch_seed_skipped_names: "{{ demo_patch_seed_skipped_names + [seed_package.name] }}"
+  when: seed_package.name in demo_patch_seed_protected_packages
+
+- name: Handle already-pending package (idempotent skip)
+  when:
+    - seed_package.name not in demo_patch_seed_protected_packages
+    - seed_package.name in demo_patch_seed_pending_names
+  block:
+    - name: Record package already pending update
+      ansible.builtin.set_fact:
+        demo_patch_seed_already_pending_names: "{{ demo_patch_seed_already_pending_names + [seed_package.name] }}"
+
+- name: Downgrade package to demo seed version
+  when:
+    - seed_package.name not in demo_patch_seed_protected_packages
+    - seed_package.name not in demo_patch_seed_pending_names
+  block:
+    - name: Install downgraded package version
+      ansible.builtin.dnf:
+        name: "{{ seed_package.nevra }}"
+        allow_downgrade: true
+        state: present
+      register: demo_patch_seed_downgrade_result
+
+    - name: Record downgraded package
+      ansible.builtin.set_fact:
+        demo_patch_seed_downgraded_names: "{{ demo_patch_seed_downgraded_names + [seed_package.name] }}"
+      when: demo_patch_seed_downgrade_result.changed | default(false)
+
+    - name: Record unchanged package at target version
+      ansible.builtin.set_fact:
+        demo_patch_seed_already_pending_names: "{{ demo_patch_seed_already_pending_names + [seed_package.name] }}"
+      when: not (demo_patch_seed_downgrade_result.changed | default(false))

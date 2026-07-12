@@ -288,10 +288,10 @@ All six DEMO templates (patch, OpenSCAP scan/remediate, deploy, verify, and the 
 ### Workflow Overview
 
 ```
-Patch → OpenSCAP Scan → OpenSCAP Remediate → Deploy App → Verify
+Seed → Patch → OpenSCAP Scan → OpenSCAP Remediate → Deploy App → Verify
 ```
 
-Launch as **DEMO - RHEL Operations Pipeline** for the full demo from the Controller UI.
+Launch as **DEMO - RHEL Operations Pipeline** for the full demo from the Controller UI. The workflow seeds host-specific downgrades before patching so `DEMO_PATCH_PORTAL` lines show per-node package names.
 
 ### Existing Environment Resources (jmvv9 sandbox)
 
@@ -302,12 +302,43 @@ Configured on the OpenTLC full AAP + OpenShift lab:
 | Project | **RHEL Demo Project** (id: 43) → GitHub repo |
 | Inventory | **Workshop Inventory** (id: 34) — hosts node1, node2 (`ansible_host` = OpenTLC FQDNs) |
 | Credential | **Workshop Credential** (id: 35) — `lab-user` + bastion automation private key |
-| Job templates | DEMO Patch (44), Scan (45), Remediate (46), Deploy (47), Verify (48) |
-| Workflow | **DEMO - RHEL Operations Pipeline** (id: 49) |
-| Self-service | demo-user with Execute on templates 44–49 |
+| Job templates | DEMO Seed (50), Patch (44), Scan (45), Remediate (46), Deploy (47), Verify (48) |
+| Workflow | **DEMO - RHEL Operations Pipeline** (id: 49) — Seed → Patch → … |
+| Self-service | demo-user with Execute on templates 44–50 and workflow 49 |
 | OAuth app | **Ansible Automation Portal** (id: 1) — redirect URI set to portal route |
 | Automation Portal | **Deployed** — `redhat-rhaap-portal` v2.2.0 in `rhaap-portal` namespace |
 | Automation Dashboard | **Not enabled** — AAP 2.5.3; see [monitoring/demo-narrative-jmvv9-automation-dashboard.md](monitoring/demo-narrative-jmvv9-automation-dashboard.md) |
+
+## Patch demo: seeded pending updates (automated)
+
+When RHEL nodes are fully patched, **DEMO Patch** (template 44) reports `packages=none`. For live demos, pending updates are created by downgrading **different** packages on each web host. **Do not downgrade `httpd`** — the web app demo must keep serving.
+
+| Host | Inventory name | FQDN | Seeded packages (installed → pending upgrade) |
+|------|----------------|------|-----------------------------------------------|
+| node1 | `node1` | `rhel9.4vkbf.sandbox1878.opentlc.com` | `curl`, `tar` (`vim-minimal` optional) |
+| node2 | `node2` | `rhel9.gkmvw.sandbox5326.opentlc.com` | `sudo`, `gzip` |
+
+Package versions and NEVRAs live in `inventories/workshop/host_vars/node1.yml` and `node2.yml`. The `demo_patch_seed` role downgrades only when a package is **not** already in `dnf list updates` (idempotent re-runs).
+
+### Trigger from Controller or portal
+
+| Goal | How |
+|------|-----|
+| Full pipeline with seed | Launch workflow **49** — seed runs as the first node |
+| Patch only, re-seed first | Launch template **44**, survey **Prepare demo updates first?** = `true` |
+| Seed only (between demos) | Launch template **DEMO - Seed Patch Demo Packages** |
+
+Job stdout includes `DEMO_PATCH_SEED` marker lines and a `DEMO PATCH SEED SUMMARY (portal)` block. After seeding, launch patch (or the workflow) and confirm `DEMO_PATCH_PORTAL` lines list the expected packages.
+
+**Controller API** (after `git push` and project sync):
+
+```bash
+export CONTROLLER_TOKEN='<controller-token>'
+./controller/configure-demo-seed-template.sh
+./controller/sync-demo-project.sh
+```
+
+**Verified (2026-07-12):** Manual downgrades produced node1 pending **2** (`curl`, `tar`) and node2 pending **2** (`gzip`, `sudo`); patch job stdout showed matching `DEMO_PATCH_PORTAL` lines. Automated seeding replaces bastion `dnf downgrade` commands.
 
 ## Demo Timing
 
@@ -328,6 +359,8 @@ For a shorter demo, skip remediation or limit to a single host with `--limit nod
 |----------|---------|-------------|
 | `security_only` | `false` | Patch only security updates |
 | `reboot_after_patch` | `false` | Reboot if kernel updated |
+| `seed_demo_packages` | `false` | Run `demo_patch_seed` before patch (patch template survey) |
+| `demo_patch_seed_packages` | per host_vars | NEVRAs to downgrade for patch demo seeding |
 | `openscap_profile` | CIS | Full CIS SCAP profile (scan template) |
 | `openscap_demo_mode` | `false` (scan), `true` (remediate playbook) | Use tailored auto-remediable CIS profile |
 | `openscap_demo_profile` | `xccdf_org.ssgproject.content_profile_cis_workshop` | Tailored profile ID for demo mode |

@@ -1,0 +1,11 @@
+---
+# Packages that must never be downgraded (web app demo depends on httpd).
+demo_patch_seed_protected_packages:
+  - httpd
+  - httpd-core
+  - httpd-tools
+  - mod_ssl
+  - mod_http2
+
+# Per-host lists live in host_vars (demo_patch_seed_packages).
+demo_patch_seed_packages: []
