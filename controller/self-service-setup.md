@@ -355,7 +355,7 @@ Expected: **15** rows.
 | demo-user sees no templates (controller) | Re-run `configure-self-service.sh`; confirm Execute role |
 | demo-user sees no templates (portal) | Run `./controller/configure-portal-rbac.sh` on bastion; confirm 15 Casbin rules; sign in with RHAAP OAuth |
 | Portal login shows GitHub instead of AAP | Helm chart enables `backstage-plugin-auth-backend-module-github-provider` by default; run `DISABLE_GUEST_AUTH=1 ./controller/deploy-self-service-portal.sh` or re-run full deploy script |
-| Portal login fails | Enable `ALLOW_OAUTH2_FOR_EXTERNAL_USERS`; verify OAuth redirect URI matches **route host** (`apps.` domain on OpenTLC) |
+| Portal login fails | Use **Gateway** OAuth `client_id` (`/api/gateway/v1/applications/`), not Controller; enable `ALLOW_OAUTH2_FOR_EXTERNAL_USERS`; verify redirect URI matches **route host** (`apps.` on OpenTLC) |
 | Portal `CrashLoopBackOff` / `YAMLParseError duplicate production` | Do not merge a second `catalog.providers.rhaap.production` block; run `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 | Portal chart missing | Download from Red Hat Customer Portal or use OpenShift Helm catalog with registry auth |
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |
