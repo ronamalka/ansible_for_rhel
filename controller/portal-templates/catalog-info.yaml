@@ -8,3 +8,4 @@ spec:
   targets:
     - ./patch-rhel-package-summary.yaml
     - ./deploy-web-app-summary.yaml
+    - ./verify-web-app-summary.yaml

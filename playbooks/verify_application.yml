@@ -4,6 +4,10 @@
   gather_facts: false
   become: false
   tasks:
+    - name: Resolve deployment stage for host
+      ansible.builtin.set_fact:
+        stage: "{{ web_app_host_stages[inventory_hostname] | default('unknown') }}"
+
     - name: Check HTTP response from each host
       ansible.builtin.uri:
         url: "http://127.0.0.1"
@@ -11,6 +15,33 @@
         status_code: 200
       register: web_check
 
-    - name: Display page content
+    - name: Capture verify summary facts for portal
+      ansible.builtin.set_fact:
+        web_verify_url: "http://127.0.0.1"
+        web_verify_status: "{{ web_check.status }}"
+        web_verify_content: "{{ web_check.content | regex_replace('\\s+', ' ') | truncate(120) }}"
+        web_verify_stage: "{{ stage }}"
+
+    - name: Display per-host verify check
       ansible.builtin.debug:
-        msg: "{{ inventory_hostname }} ({{ stage | default('unknown') }}): {{ web_check.content | regex_replace('\\s+', ' ') | truncate(100) }}"
+        msg:
+          - "========== VERIFY CHECK: {{ inventory_hostname }} =========="
+          - "URL: {{ web_verify_url }}"
+          - "HTTP status: {{ web_verify_status }}"
+          - "Stage: {{ web_verify_stage }}"
+          - "Content: {{ web_verify_content }}"
+          - "DEMO_VERIFY_PORTAL | host={{ inventory_hostname }} | url={{ web_verify_url }} | status={{ web_verify_status }} | stage={{ web_verify_stage }} | content={{ web_verify_content }}"
+
+- name: Aggregate verify results for portal and job stdout
+  hosts: web
+  gather_facts: false
+  tasks:
+    - name: Print portal-visible per-node verify summary
+      ansible.builtin.debug:
+        msg: |
+          ===== DEMO VERIFY SUMMARY (portal) =====
+          {% for host in groups['web'] | sort %}
+          {{ host }}: url={{ hostvars[host].web_verify_url | default('unknown') }} | status={{ hostvars[host].web_verify_status | default('unknown') }} | stage={{ hostvars[host].web_verify_stage | default('unknown') }} | content={{ hostvars[host].web_verify_content | default('unknown') }}
+          {% endfor %}
+          ===== END DEMO VERIFY SUMMARY (portal) =====
+      run_once: true

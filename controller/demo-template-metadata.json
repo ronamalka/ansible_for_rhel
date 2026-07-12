@@ -19,7 +19,7 @@
     },
     "15": {
       "name": "DEMO - Verify Web Application",
-      "description": "Verify deployed web applications return HTTP 200 with expected content."
+      "description": "Verify deployed web applications return HTTP 200 with expected content. Job stdout and the portal verify-summary template show per-node URL, HTTP status, stage, and content snippet."
     }
   },
   "workflow_job_templates": {

@@ -369,7 +369,7 @@ Ansible `debug` output from the playbook appears in **Controller job stdout**, n
 
 ### Register the package-summary portal template (once per portal)
 
-See **Register custom portal templates** under [Portal deploy job output](#portal-deploy-job-output-per-node-details) — one catalog import registers both patch and deploy summary templates.
+See **Register custom portal templates** under [Portal deploy job output](#portal-deploy-job-output-per-node-details) — one catalog import registers patch, deploy, and verify summary templates.
 
 Presenters launch **DEMO - Patch RHEL Servers (with package summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
 
@@ -406,7 +406,7 @@ Auto-generated **Deploy Web Application** portal templates show the same high-le
 
    `https://github.com/ronamalka/ansible_for_rhel/blob/main/controller/portal-templates/catalog-info.yaml`
 
-5. Click **Analyze** → **Import** (imports both patch and deploy summary templates).
+5. Click **Analyze** → **Import** (imports patch, deploy, and verify summary templates).
 6. Grant `demo-portal-users` catalog read on the new templates (or rely on tag filter if configured).
 
 After updating template YAML in Git, re-import or wait for catalog refresh (~30 minutes). Templates use `http:backstage:request` (not `fetch:plain` — that action does not support auth headers or return response bodies).
@@ -419,6 +419,28 @@ node1: packages=httpd, firewalld | stage=dev | services=httpd=running, firewalld
 node2: packages=httpd, firewalld | stage=prod | services=httpd=running, firewalld=running | url=http://node2/ | content=Production content deployed by Ansible
 node3: packages=httpd, firewalld | stage=dev | services=httpd=running, firewalld=running | url=http://node3/ | content=Development content deployed by Ansible
 ===== END DEMO DEPLOY SUMMARY (portal) =====
+```
+
+## Portal verify job output (per-node checks)
+
+Auto-generated **Verify Web Application** portal templates show the same high-level scaffolder log as patching and deploy (job ID and status only). Per-host URL, HTTP status, and content checks live in Controller job stdout unless you use the custom portal template.
+
+### Approach
+
+| Layer | What it does |
+|-------|----------------|
+| `playbooks/verify_application.yml` | Per-host URI check plus `DEMO_VERIFY_PORTAL` marker lines; sets `web_verify_*` facts (url, status, stage, content) |
+| `playbooks/verify_application.yml` | Final play on `web` (run_once) prints `DEMO VERIFY SUMMARY (portal)` block for all `web` hosts |
+| Custom portal template | `controller/portal-templates/verify-web-app-summary.yaml` — launches template 48, fetches job stdout via `http:backstage:request` + AAP Gateway proxy, displays it in portal **output** |
+
+Presenters launch **DEMO - Verify Web Application (with verify summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
+
+```
+===== DEMO VERIFY SUMMARY (portal) =====
+node1: url=http://127.0.0.1 | status=200 | stage=dev | content=<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <title>node1 - DEV</title>...
+node2: url=http://127.0.0.1 | status=200 | stage=prod | content=<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <title>node2 - PROD</title>...
+node3: url=http://127.0.0.1 | status=200 | stage=dev | content=<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <title>node3 - DEV</title>...
+===== END DEMO VERIFY SUMMARY (portal) =====
 ```
 
 ### Sync Controller project after Git push
@@ -445,6 +467,7 @@ On the bastion (with `CONTROLLER_TOKEN` or `CONTROLLER_PASSWORD` set):
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |
 | Portal shows job ID only, no packages | Use custom template **DEMO - Patch RHEL Servers (with package summary)**; auto-generated templates do not fetch stdout |
 | Portal shows job ID only, no deploy details | Use custom template **DEMO - Deploy Web Application (with deploy summary)**; auto-generated templates do not fetch stdout |
+| Portal shows job ID only, no verify details | Use custom template **DEMO - Verify Web Application (with verify summary)**; auto-generated templates do not fetch stdout |
 | Portal fetch-stdout fails (`fetch:plain` / `requestHeaders`) | Re-import updated templates; run `./controller/configure-portal-aap-proxy.sh` on bastion. Custom templates use `http:backstage:request` through `/proxy/aap-gateway/` |
 
 ## References
