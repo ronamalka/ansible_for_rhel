@@ -305,7 +305,7 @@ For a shorter demo, skip remediation or limit to a single host with `--limit nod
 | `reboot_after_patch` | `false` | Reboot if kernel updated |
 | `openscap_profile` | CIS | Full CIS SCAP profile (scan template) |
 | `openscap_demo_mode` | `false` (scan), `true` (remediate playbook) | Use tailored auto-remediable CIS profile |
-| `openscap_demo_profile` | `xccdf_org.demo.profile_cis_workshop` | Tailored profile ID for demo mode |
+| `openscap_demo_profile` | `xccdf_org.ssgproject.content_profile_cis_workshop` | Tailored profile ID for demo mode |
 | `openscap_show_cis_baseline` | `true` | When demo mode, also scan/report full CIS score |
 | `openscap_reboot_after_remediate` | `false` | Reboot after remediate (some rules need it) |
 | `stage` | `dev` (group), `prod` (node2) | Environment label for web content |

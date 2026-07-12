@@ -4,7 +4,7 @@
   <xccdf:benchmark href="/usr/share/xml/scap/ssg/content/ssg-rhel8-ds.xml"
                    id="xccdf_org.ssgproject.content_benchmark_RHEL-8"/>
   <xccdf:version time="2026-07-12T00:00:00">1</xccdf:version>
-  <xccdf:Profile id="xccdf_org.demo.profile_cis_workshop"
+  <xccdf:Profile id="xccdf_org.ssgproject.content_profile_cis_workshop"
                  extends="xccdf_org.ssgproject.content_profile_cis">
     <xccdf:title>CIS Demo - Auto-Remediable Controls</xccdf:title>
     <xccdf:description>
