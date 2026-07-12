@@ -268,7 +268,7 @@ Non-admin users can launch DEMO automations without full controller access.
 |------|-----|-------|
 | AAP Gateway UI | `https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` | Full AAP 2.5 (gateway + controller + EDA) |
 | Controller templates | `https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/#/templates` | Direct controller route |
-| Automation Portal | `https://<portal-route>/` | Deploy via OpenShift Helm (see self-service-setup.md) |
+| Automation Portal | `https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` | Helm release `redhat-rhaap-portal` in `rhaap-portal` |
 
 **Demo user:** `demo-user` / `<demo-user-password>` (set via `DEMO_USER_PASSWORD` during setup — not stored in Git)
 
@@ -301,8 +301,8 @@ Configured on the OpenTLC full AAP + OpenShift lab:
 | Job templates | DEMO Patch (44), Scan (45), Remediate (46), Deploy (47), Verify (48) |
 | Workflow | **DEMO - RHEL Operations Pipeline** (id: 49) |
 | Self-service | demo-user with Execute on templates 44–49 |
-| OAuth app | **Ansible Automation Portal** (id: 1) — update redirect URI after portal deploy |
-| Automation Portal | **Not yet deployed** — requires Helm chart + `registry.redhat.io` access |
+| OAuth app | **Ansible Automation Portal** (id: 1) — redirect URI set to portal route |
+| Automation Portal | **Deployed** — `redhat-rhaap-portal` v2.2.0 in `rhaap-portal` namespace |
 
 ## Demo Timing
 

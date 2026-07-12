@@ -176,10 +176,10 @@ See [Red Hat initial portal RBAC setup](https://docs.redhat.com/en/documentation
 After deployment:
 
 ```
-https://<portal-route-hostname>/
+https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/
 ```
 
-Sign in with **demo-user** credentials (same as controller).
+Sign in with **demo-user** credentials (same as controller). Configure portal RBAC (step 5 above) before templates appear for non-admin users.
 
 ### jmvv9 deployment status (2026-07-12)
 
@@ -188,9 +188,23 @@ Sign in with **demo-user** credentials (same as controller).
 | Controller OAuth + RBAC | Configured (demo-user sees 6 DEMO templates) |
 | OpenShift `oc` on bastion | `system:admin` |
 | Helm on bastion | Installed (v3.21+) |
-| Portal Helm chart in cluster catalog | **Not found** in `openshift-helm-charts` |
-| `registry.redhat.io` portal image pull | **Unauthorized** without customer registry credentials |
-| Portal route | **Not deployed** — blocked until chart + registry access |
+| Portal Helm chart | `openshift-helm-charts/redhat-rhaap-portal` v2.2.0 (`helm search repo openshift-helm-charts/redhat-rhaap-portal -l`) |
+| `registry.redhat.io` image pull | Works via cluster `openshift-config/pull-secret` (lab pool credentials) |
+| Helm release | `redhat-rhaap-portal` in namespace `rhaap-portal` |
+| Portal URL | `https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` |
+| OAuth redirect URI | Updated to portal `/api/auth/rhaap/handler/frame` |
+| Portal RBAC for demo-user | **Manual** — assign Demo Self-Service team in portal Administration → RBAC |
+| External DNS | Portal hostname may show `NXDOMAIN` briefly; route is reachable via OpenShift router |
+
+Automated deploy on bastion:
+
+```bash
+export OAUTH_CLIENT_ID="7Njfd7j6xn58tDAb8C3Xjf6fUbssydjT22niynvT"
+export AAP_TOKEN="<controller-token>"
+./controller/deploy-self-service-portal.sh
+```
+
+Public OAuth clients require a non-empty `oauth-client-secret` in the OpenShift secret (the script uses a placeholder). OCI plug-in mode requires the `redhat-rhaap-portal-dynamic-plugins-registry-auth` secret built from cluster pull credentials or a local `auth.json`.
 
 ## Controller-only self-service (fallback)
 
