@@ -21,66 +21,33 @@ REPAIR_APP_CONFIG="${REPAIR_APP_CONFIG:-0}"
 
 repair_app_config_configmap() {
   local cm="$1" ns="$2"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   if ! oc get configmap "${cm}" -n "${ns}" >/dev/null 2>&1; then
     echo "ConfigMap ${cm} not found in ${ns}; skip app-config repair" >&2
     return 0
   fi
 
-  local tmp
+  local tmp result
   tmp="$(mktemp)"
   oc get configmap "${cm}" -n "${ns}" -o jsonpath='{.data.app-config\.yaml}' >"${tmp}"
 
-  python3 - "${tmp}" <<'PY'
-import re
-import sys
-from pathlib import Path
+  if ! result="$(python3 "${script_dir}/repair-portal-app-config.py" "${tmp}")"; then
+    rm -f "${tmp}"
+    echo "app-config repair failed" >&2
+    exit 1
+  fi
 
-path = Path(sys.argv[1])
-text = path.read_text()
-
-block = re.search(
-    r"(?ms)^(\s+)production:\n(\1\s+orgs:\n(?:\1\s+- .+\n)+)",
-    text,
-)
-if not block:
-    sys.exit(0)
-
-indent, orgs_block = block.group(1), block.group(0)
-quoted = re.search(
-    rf"(?ms)^{re.escape(indent)}'production':\n",
-    text,
-)
-if not quoted:
-    sys.exit(0)
-
-text = text.replace(orgs_block, "", 1)
-text = text.replace(f"{indent}'production':", f"{indent}production:", 1)
-path.write_text(text)
-print("Removed duplicate catalog.providers.rhaap.production block from app-config")
-PY
-
-  if python3 - "${tmp}" <<'PY' 2>/dev/null
-import re, sys
-from pathlib import Path
-text = Path(sys.argv[1]).read_text()
-rhaap = re.search(r"(?ms)^  providers:\n    rhaap:\n(.*?)(?=^  rules:)", text)
-if not rhaap:
-    sys.exit(1)
-prod = len(re.findall(r"^\s+production:\s*$", rhaap.group(1), re.M))
-sys.exit(0 if prod <= 1 else 1)
-PY
-  then
-    oc create configmap "${cm}" \
-      --from-file=app-config.yaml="${tmp}" \
-      -n "${ns}" --dry-run=client -o yaml | oc apply -f -
+  if [[ "${result}" == "repaired" ]]; then
+    oc create configmap "${cm}"       --from-file=app-config.yaml="${tmp}"       -n "${ns}" --dry-run=client -o yaml | oc apply -f -
     oc rollout restart "deployment/${HELM_RELEASE}" -n "${ns}" || true
     echo "=== Repaired ${cm} and restarted ${HELM_RELEASE} ==="
   else
-    echo "app-config still has duplicate catalog.providers.rhaap.production keys; fix values overlay" >&2
-    exit 1
+    echo "=== No duplicate catalog.providers.rhaap.production in ${cm} ==="
   fi
   rm -f "${tmp}"
 }
+
 
 echo "=== Prerequisites ==="
 command -v oc >/dev/null || { echo "oc required" >&2; exit 1; }

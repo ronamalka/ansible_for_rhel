@@ -248,6 +248,15 @@ print(json.dumps({
   echo "Created OAuth application ${OAUTH_APP_NAME}"
 else
   echo "OAuth application ${OAUTH_APP_NAME} already exists (id ${oauth_id})"
+  if [[ "${OAUTH_REDIRECT_URI}" != *PLACEHOLDER* ]]; then
+    payload=$(python3 -c "
+import json
+print(json.dumps({'redirect_uris': '''${OAUTH_REDIRECT_URI}'''}))
+")
+    code=$(api_patch "/api/v2/applications/${oauth_id}/" "${payload}")
+    require_ok "${code}" "update OAuth redirect URI"
+    echo "Updated OAuth redirect URI to ${OAUTH_REDIRECT_URI}"
+  fi
 fi
 
 echo "=== Verifying ${DEMO_USER} can see DEMO templates ==="

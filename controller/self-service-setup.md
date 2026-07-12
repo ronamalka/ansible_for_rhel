@@ -8,7 +8,7 @@ AAP 2.5+ provides two self-service options:
 
 | Mode | URL | When to use |
 |------|-----|-------------|
-| **Automation Portal** (recommended) | `https://<portal-route>/` | Full AAP + OpenShift deployment with the self-service automation portal Helm chart |
+| **Automation Portal** (recommended) | `https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` | Full AAP + OpenShift deployment with the self-service automation portal Helm chart |
 | **Controller templates (limited)** | `https://<controller>/#/templates` | Fallback when portal is not deployed |
 
 This repository configures **controller-side prerequisites** (user, team, RBAC, labels, descriptions, OAuth) required for both modes.
@@ -21,6 +21,7 @@ This repository configures **controller-side prerequisites** (user, team, RBAC, 
 | AAP Controller API | `https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
 | OpenShift Console | `https://console-openshift-console.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
 | Bastion | `ssh lab-user@bastion.jmvv9.sandbox3400.opentlc.com` |
+| Automation Portal | `https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` |
 | Organization | Default (id: 1) |
 | Admin / token | `<admin-password>` / `<controller-token>` (lab environment — **never commit**) |
 
@@ -195,6 +196,7 @@ Sign in with **demo-user** credentials (same as controller). Configure portal RB
 | OAuth redirect URI | Updated to portal `/api/auth/rhaap/handler/frame` |
 | Portal RBAC for demo-user | **Manual** — assign Demo Self-Service team in portal Administration → RBAC |
 | External DNS | Portal hostname may show `NXDOMAIN` briefly; route is reachable via OpenShift router |
+| Known pitfall | Duplicate `catalog.providers.rhaap.production` in merged app-config → `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 
 Automated deploy on bastion:
 
@@ -247,6 +249,7 @@ Should return survey/launch schema (not 403).
 | User/team create 403 | Create via Gateway UI or controller DB on OCP deployments |
 | demo-user sees no templates | Re-run `configure-self-service.sh`; confirm Execute role |
 | Portal login fails | Enable `ALLOW_OAUTH2_FOR_EXTERNAL_USERS`; verify OAuth redirect URI |
+| Portal `CrashLoopBackOff` / `YAMLParseError duplicate production` | Do not merge a second `catalog.providers.rhaap.production` block; run `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 | Portal chart missing | Download from Red Hat Customer Portal or use OpenShift Helm catalog with registry auth |
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |
 
