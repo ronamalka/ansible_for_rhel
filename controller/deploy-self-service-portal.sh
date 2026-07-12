@@ -16,8 +16,8 @@ AAP_HOST_URL="${AAP_HOST_URL:-https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox34
 CONTROLLER="${CONTROLLER:-https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
 OAUTH_APP_NAME="${OAUTH_APP_NAME:-Ansible Automation Portal}"
 OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-}"
-# Public OAuth clients have no secret; Backstage still requires a non-empty string.
-OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-public-client-no-secret}"
+# Gateway public OAuth apps reject token exchange if client_secret is sent (invalid_client).
+OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-}"
 AAP_TOKEN="${AAP_TOKEN:?Set AAP_TOKEN (controller token with write access)}"
 CONTROLLER_TOKEN="${CONTROLLER_TOKEN:-${AAP_TOKEN}}"
 OAUTH_APP_ID="${OAUTH_APP_ID:-1}"
