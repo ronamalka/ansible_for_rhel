@@ -52,11 +52,16 @@ spec:
 
     - id: fetch-stdout
       name: Fetch patch job output
-      action: fetch:plain
+      action: http:backstage:request
       input:
-        url: https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/api/v2/jobs/${{ steps['launch-job'].output.data.id }}/stdout/?format=txt
-        requestHeaders:
+        method: GET
+        path: /proxy/aap-gateway/api/controller/v2/jobs/${{ steps['launch-job'].output.data.id }}/stdout/
+        params:
+          format: txt
+        headers:
           Authorization: Bearer ${{ secrets.aapToken }}
+        timeout: 120000
+        logRequestPath: false
 
   output:
     text:

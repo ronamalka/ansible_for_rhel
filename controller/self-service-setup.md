@@ -365,7 +365,7 @@ Ansible `debug` output from the playbook appears in **Controller job stdout**, n
 |-------|----------------|
 | `roles/rhel_patching` | Per-host banners plus `DEMO_PATCH_PORTAL` marker lines; sets `rhel_patching_updated_package_names` |
 | `playbooks/patch_rhel.yml` | Final play on `web` (run_once) prints `DEMO PATCH PACKAGE SUMMARY (portal)` block for all `web` hosts |
-| Custom portal template | `controller/portal-templates/patch-rhel-package-summary.yaml` — launches template 44, fetches job stdout via Controller API, displays it in portal **output** |
+| Custom portal template | `controller/portal-templates/patch-rhel-package-summary.yaml` — launches template 44, fetches job stdout via `http:backstage:request` + AAP Gateway proxy, displays it in portal **output** |
 
 ### Register the package-summary portal template (once per portal)
 
@@ -390,18 +390,26 @@ Auto-generated **Deploy Web Application** portal templates show the same high-le
 |-------|----------------|
 | `roles/web_application` | Per-host banners plus `DEMO_DEPLOY_PORTAL` marker lines; sets `web_app_deploy_*` facts (packages, stage, services, URL, content) |
 | `playbooks/deploy_application.yml` | Final play on `web` (run_once) prints `DEMO DEPLOY SUMMARY (portal)` block for all `web` hosts |
-| Custom portal template | `controller/portal-templates/deploy-web-app-summary.yaml` — launches template 47, fetches job stdout via Controller API, displays it in portal **output** |
+| Custom portal template | `controller/portal-templates/deploy-web-app-summary.yaml` — launches template 47, fetches job stdout via `http:backstage:request` + AAP Gateway proxy, displays it in portal **output** |
 
 ### Register custom portal templates (once per portal)
 
-1. Sign in to the portal as an AAP administrator.
-2. **Templates** → **Add template**.
-3. Git URL:
+1. On the bastion, configure the AAP Gateway proxy for stdout fetch (once per portal):
+
+   ```bash
+   ./controller/configure-portal-aap-proxy.sh
+   ```
+
+2. Sign in to the portal as an AAP administrator.
+3. **Templates** → **Add template**.
+4. Git URL:
 
    `https://github.com/ronamalka/ansible_for_rhel/blob/main/controller/portal-templates/catalog-info.yaml`
 
-4. Click **Analyze** → **Import** (imports both patch and deploy summary templates).
-5. Grant `demo-portal-users` catalog read on the new templates (or rely on tag filter if configured).
+5. Click **Analyze** → **Import** (imports both patch and deploy summary templates).
+6. Grant `demo-portal-users` catalog read on the new templates (or rely on tag filter if configured).
+
+After updating template YAML in Git, re-import or wait for catalog refresh (~30 minutes). Templates use `http:backstage:request` (not `fetch:plain` — that action does not support auth headers or return response bodies).
 
 Presenters launch **DEMO - Deploy Web Application (with deploy summary)** instead of the auto-generated tile. After the job completes, the portal **output** page includes the full job stdout; scroll to the summary block:
 
@@ -437,6 +445,7 @@ On the bastion (with `CONTROLLER_TOKEN` or `CONTROLLER_PASSWORD` set):
 | Jobs unreachable on node* | Provision RHEL VMs or add DNS/`/etc/hosts` for target hosts |
 | Portal shows job ID only, no packages | Use custom template **DEMO - Patch RHEL Servers (with package summary)**; auto-generated templates do not fetch stdout |
 | Portal shows job ID only, no deploy details | Use custom template **DEMO - Deploy Web Application (with deploy summary)**; auto-generated templates do not fetch stdout |
+| Portal fetch-stdout fails (`fetch:plain` / `requestHeaders`) | Re-import updated templates; run `./controller/configure-portal-aap-proxy.sh` on bastion. Custom templates use `http:backstage:request` through `/proxy/aap-gateway/` |
 
 ## References
 
