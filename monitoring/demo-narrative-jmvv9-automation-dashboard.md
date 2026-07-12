@@ -11,7 +11,7 @@ Presenter-ready walkthrough for the **Automation Dashboard & Analytics** product
 | Platform version | **AAP 2.5.3** (Controller 4.6.2) — operator channel `stable-2.5` |
 | DEMO templates | 44 Patch, 45 Scan, 46 Remediate, 47 Deploy, 48 Verify, 49 Workflow |
 | DEMO project | **RHEL Demo Project** (id: 43) |
-| Self-service portal | `https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` (Helm deploy; OAuth redirect still required) |
+| Self-service portal | `https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` (Helm deploy; OAuth redirect still required) |
 
 **Timing:** ~10–15 minutes once Automation Dashboard is enabled and has collected data (6-hourly schedule on native 2.7; configurable sync on standalone utility).
 

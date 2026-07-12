@@ -7,7 +7,7 @@ OCP_NAMESPACE="${OCP_NAMESPACE:-rhaap-portal}"
 HELM_RELEASE="${HELM_RELEASE:-redhat-rhaap-portal}"
 CHART_VERSION="${CHART_VERSION:-2.2.0}"
 APP_CONFIG_CM="${APP_CONFIG_CM:-${HELM_RELEASE}-app-config}"
-CLUSTER_ROUTER_BASE="${CLUSTER_ROUTER_BASE:-cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
+CLUSTER_ROUTER_BASE="${CLUSTER_ROUTER_BASE:-apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
 
 AAP_HOST_URL="${AAP_HOST_URL:-https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"
 CONTROLLER="${CONTROLLER:-https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com}"

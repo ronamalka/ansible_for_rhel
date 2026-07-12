@@ -8,7 +8,7 @@ AAP 2.5+ provides two self-service options:
 
 | Mode | URL | When to use |
 |------|-----|-------------|
-| **Automation Portal** (recommended) | `https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` | Full AAP + OpenShift deployment with the self-service automation portal Helm chart |
+| **Automation Portal** (recommended) | `https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` | Full AAP + OpenShift deployment with the self-service automation portal Helm chart |
 | **Controller templates (limited)** | `https://<controller>/#/templates` | Fallback when portal is not deployed |
 
 This repository configures **controller-side prerequisites** (user, team, RBAC, labels, descriptions, OAuth) required for both modes.
@@ -21,7 +21,7 @@ This repository configures **controller-side prerequisites** (user, team, RBAC, 
 | AAP Controller API | `https://aap-controller-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
 | OpenShift Console | `https://console-openshift-console.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` |
 | Bastion | `ssh lab-user@bastion.jmvv9.sandbox3400.opentlc.com` |
-| Automation Portal | `https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` |
+| Automation Portal | `https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` |
 | Organization | Default (id: 1) |
 | Admin / token | `<admin-password>` / `<controller-token>` (lab environment — **never commit**) |
 
@@ -141,11 +141,11 @@ From **OpenShift Developer → Helm → Create → Automation Portal** (or equiv
 ```yaml
 redhat-developer-hub:
   global:
-    clusterRouterBase: cluster-jmvv9.jmvv9.sandbox3400.opentlc.com
+    clusterRouterBase: apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com
     pluginMode: oci
 ```
 
-`clusterRouterBase` must match your OpenShift apps domain (not `apps.example.com`).
+`clusterRouterBase` must be the **apps ingress DNS suffix** for your cluster (for jmvv9: `apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com`). Do not omit the `apps.` segment on OpenTLC sandboxes.
 
 ### 4. Update OAuth redirect URI
 
@@ -177,8 +177,48 @@ See [Red Hat initial portal RBAC setup](https://docs.redhat.com/en/documentation
 After deployment:
 
 ```
-https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/
+https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/
 ```
+
+### Browser access (OpenTLC jmvv9)
+
+OpenTLC lab DNS resolves **`*.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com`** to the OpenShift ingress load balancer. The portal Helm chart builds the route from `clusterRouterBase`; it must include the **`apps.`** prefix for this sandbox (see `deploy-self-service-portal.sh` default).
+
+**Working URL (no `/etc/hosts` required):**
+
+```
+https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/
+```
+
+If the chart was installed with `clusterRouterBase: cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` (missing `apps.`), the route hostname does **not** match the lab wildcard and browsers show **DNS NXDOMAIN**. The app may still respond when you pin the router IP:
+
+```bash
+# Router IPs (same as other *.apps routes)
+dig +short aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com
+
+curl -vk --resolve 'redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com:443:3.146.240.130' \
+  'https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/'
+```
+
+**Fix:** upgrade the release so the route uses the `apps.` domain:
+
+```bash
+helm upgrade redhat-rhaap-portal openshift-helm-charts/redhat-rhaap-portal \
+  --version 2.2.0 -n rhaap-portal --reuse-values \
+  --set redhat-developer-hub.global.clusterRouterBase=apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com
+```
+
+Then update the OAuth redirect URI to `https://<new-portal-host>/api/auth/rhaap/handler/frame`.
+
+**Temporary workaround (`/etc/hosts`):** add one router IP from `dig +short aap-aap.apps...` and the **exact** route hostname from `oc get route -n rhaap-portal`.
+
+Verify from your laptop:
+
+```bash
+curl -skI 'https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/' | head -1
+# Expect: HTTP/1.1 200 OK
+```
+
 
 Sign in with **demo-user** credentials (same as controller). Configure portal RBAC (step 5 above) before templates appear for non-admin users.
 
@@ -192,10 +232,10 @@ Sign in with **demo-user** credentials (same as controller). Configure portal RB
 | Portal Helm chart | `openshift-helm-charts/redhat-rhaap-portal` v2.2.0 (`helm search repo openshift-helm-charts/redhat-rhaap-portal -l`) |
 | `registry.redhat.io` image pull | Works via cluster `openshift-config/pull-secret` (lab pool credentials) |
 | Helm release | `redhat-rhaap-portal` in namespace `rhaap-portal` |
-| Portal URL | `https://redhat-rhaap-portal-rhaap-portal.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` |
+| Portal URL | `https://redhat-rhaap-portal-rhaap-portal.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/` |
 | OAuth redirect URI | Updated to portal `/api/auth/rhaap/handler/frame` |
 | Portal RBAC for demo-user | **Manual** — assign Demo Self-Service team in portal Administration → RBAC |
-| External DNS | Portal hostname may show `NXDOMAIN` briefly; route is reachable via OpenShift router |
+| External DNS | Use `apps.` in `clusterRouterBase`; see **Browser access** above |
 | Known pitfall | Duplicate `catalog.providers.rhaap.production` in merged app-config → `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
 | Automation Dashboard | **Not enabled** — separate product; see `monitoring/demo-narrative-jmvv9-automation-dashboard.md` |
 
