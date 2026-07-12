@@ -1,5 +1,6 @@
 ---
 - name: Extract OpenSCAP compliance score from results XML
+  tags: [scan, remediate]
   ansible.builtin.shell: |
     set -o pipefail
     grep 'score system' "{{ openscap_score_results_path }}" | tail -1 \
@@ -11,5 +12,6 @@
   failed_when: openscap_score_cmd.stdout | length == 0
 
 - name: Publish parsed OpenSCAP score
+  tags: [scan, remediate]
   ansible.builtin.set_fact:
     openscap_parsed_score: "{{ openscap_score_cmd.stdout | float }}"
