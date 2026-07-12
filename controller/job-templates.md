@@ -17,12 +17,16 @@ Use these settings when creating job templates in Ansible Automation Controller 
 | Parameter | Value |
 |-----------|-------|
 | Name | RHEL Demo Project |
+| Controller project id | 10 |
 | Organization | Default |
-| SCM Type | Git (or Manual if copying files to controller) |
-| SCM URL | Your git remote for this repository |
+| SCM Type | Git |
+| SCM URL | `https://github.com/ronamalka/ansible_for_rhel.git` |
+| SCM Branch | `main` |
 | Options | Clean, Delete, Update Revision on Launch |
 
-**Manual alternative:** Copy this repository to the controller and create a Manual project pointing at the synced directory:
+This project is configured on the sandbox controller and syncs from the public GitHub repository above.
+
+**CLI alternative:** Copy this repository to the bastion for ad hoc `ansible-playbook` runs:
 
 ```bash
 # From your workstation
@@ -129,9 +133,11 @@ The environment already includes:
 | Inventory | Workshop Inventory — hosts: node1, node2, node3, ansible-1 |
 | Groups | `web` (node1, node2, node3), `control` (ansible-1) |
 | Project | Ansible official demo project → `https://github.com/RedHatGov/product-demos` |
+| Project | **RHEL Demo Project** (id: 10) → `https://github.com/ronamalka/ansible_for_rhel.git` |
 | Job Template | SECURITY / Hardening → `linux/hardening.yml` |
+| Job Templates | DEMO - Patch RHEL Servers (11), OpenSCAP Scan (12), OpenSCAP Remediate (13), Deploy Web Application (14), Verify Web Application (15) |
 
-You can keep the existing hardening template for comparison, or replace it with the OpenSCAP templates from this demo.
+You can keep the existing hardening template for comparison alongside the DEMO templates from this repo.
 
 ## Ad Hoc Commands (Post-Demo Verification)
 

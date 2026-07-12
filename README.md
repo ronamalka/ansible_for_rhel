@@ -20,6 +20,7 @@ End-to-end demonstration of managing Red Hat Enterprise Linux servers with Ansib
 | Controller user | `admin` / `<REDACTED>` |
 | Bastion SSH | `ssh student1@ansible-1.4mrmx.sandbox3261.opentlc.com` |
 | Bastion password | `<REDACTED>` |
+| Git repository | `https://github.com/ronamalka/ansible_for_rhel` |
 | Inventory | Workshop Inventory (Controller) / `inventories/workshop/hosts` (CLI) |
 
 ### Target RHEL Hosts
@@ -221,10 +222,10 @@ Launch as **DEMO - RHEL Operations Pipeline** for the full demo from the Control
 The sandbox already has:
 - **Workshop Inventory** with groups `web` and `control`
 - **Workshop Credential** (Machine credential for SSH)
+- **RHEL Demo Project** (id: 10) synced from `https://github.com/ronamalka/ansible_for_rhel.git`
+- **DEMO job templates** (ids 11–15) for patch, OpenSCAP, deploy, and verify playbooks
 - **Ansible official demo project** pointing to RedHatGov/product-demos
 - **SECURITY / Hardening** job template (`linux/hardening.yml`)
-
-Create a new project for this demo repo alongside the existing resources.
 
 ## Demo Timing
 
