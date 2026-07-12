@@ -39,15 +39,7 @@
   tags: [remediate]
   ansible.builtin.shell: |
     set -o pipefail
-    oscap xccdf eval \
-      --profile {{ openscap_profile }} \
-      --remediate \
-{% for rule in openscap_skip_remediation_rules %}
-      --skip-rule {{ rule }} \
-{% endfor %}
-      --results {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-results.xml \
-      --report {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-report.html \
-      {{ openscap_content_path }}
+    oscap xccdf eval       --profile {{ openscap_profile }}       --remediate {{ openscap_skip_remediation_rules | map('regex_replace', '^(.*)$', '--skip-rule \\1') | join(' ') }}       --results {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-results.xml       --report {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-report.html       {{ openscap_content_path }}
     oscap_rc=$?
     printf '%s\n' '{{ openscap_workshop_sudoers_content | trim }}' > {{ openscap_workshop_sudoers_dropin }}
     chmod 0440 {{ openscap_workshop_sudoers_dropin }}
