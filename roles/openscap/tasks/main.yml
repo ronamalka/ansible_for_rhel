@@ -55,7 +55,7 @@
 - name: Store CIS baseline compliance score
   tags: [scan, remediate]
   ansible.builtin.set_fact:
-    openscap_cis_baseline_score: "{{ openscap_parsed_score }}"
+    openscap_cis_baseline_score: "{{ openscap_parsed_score | float }}"
   when:
     - openscap_demo_mode | bool
     - openscap_show_cis_baseline | bool
@@ -85,7 +85,7 @@
 - name: Store scan compliance score
   tags: [scan, remediate]
   ansible.builtin.set_fact:
-    openscap_scan_score: "{{ openscap_parsed_score }}"
+    openscap_scan_score: "{{ openscap_parsed_score | float }}"
   when: openscap_parsed_score is defined
 
 - name: Display scan exit code summary
@@ -94,8 +94,8 @@
     msg:
       - "OpenSCAP scan completed on {{ inventory_hostname }}"
       - "Profile: {{ openscap_effective_profile }}{% if openscap_demo_mode | bool %} (demo tailored CIS){% else %} (full CIS){% endif %}"
-      - "Compliance score: {{ '%.2f' | format(openscap_scan_score) }}%"
-      - "{% if openscap_cis_baseline_score is defined %}Full CIS baseline score: {{ '%.2f' | format(openscap_cis_baseline_score) }}% (11 rules need manual/disk changes){% endif %}"
+      - "Compliance score: {{ '%.2f' | format(openscap_scan_score | float) }}%"
+      - "{% if openscap_cis_baseline_score is defined %}Full CIS baseline score: {{ '%.2f' | format(openscap_cis_baseline_score | float) }}% (11 rules need manual/disk changes){% endif %}"
       - "Exit code: {{ openscap_scan_result.rc }} (0=pass, 1=error, 2=failures found)"
       - "HTML report: {{ openscap_report_dir }}/{{ inventory_hostname }}-report.html"
       - "Results XML: {{ openscap_report_dir }}/{{ inventory_hostname }}-results.xml"
@@ -179,7 +179,7 @@
 - name: Store post-remediation compliance score
   tags: [remediate]
   ansible.builtin.set_fact:
-    openscap_post_remediate_score: "{{ openscap_parsed_score }}"
+    openscap_post_remediate_score: "{{ openscap_parsed_score | float }}"
   when:
     - openscap_run_remediation | bool
     - openscap_parsed_score is defined
@@ -190,10 +190,10 @@
     msg:
       - "Post-remediation scan on {{ inventory_hostname }}"
       - "Profile: {{ openscap_effective_profile }}{% if openscap_demo_mode | bool %} (demo tailored CIS){% else %} (full CIS){% endif %}"
-      - "Compliance score before remediation: {{ '%.2f' | format(openscap_scan_score) }}%"
-      - "Compliance score after remediation: {{ '%.2f' | format(openscap_post_remediate_score) }}%"
-      - "Score change: {{ '%+.2f' | format(openscap_post_remediate_score - openscap_scan_score) }} percentage points"
-      - "{% if openscap_cis_baseline_score is defined %}Full CIS baseline (context): {{ '%.2f' | format(openscap_cis_baseline_score) }}%{% endif %}"
+      - "Compliance score before remediation: {{ '%.2f' | format(openscap_scan_score | float) }}%"
+      - "Compliance score after remediation: {{ '%.2f' | format(openscap_post_remediate_score | float) }}%"
+      - "Score change: {{ '%+.2f' | format((openscap_post_remediate_score | float) - (openscap_scan_score | float)) }} percentage points"
+      - "{% if openscap_cis_baseline_score is defined %}Full CIS baseline (context): {{ '%.2f' | format(openscap_cis_baseline_score | float) }}%{% endif %}"
       - "Post-remediation scan exit code: {{ openscap_post_scan_result.rc }}"
       - "Report: {{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-report.html"
   when: openscap_run_remediation | bool
