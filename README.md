@@ -10,7 +10,7 @@ End-to-end demonstration of managing Red Hat Enterprise Linux servers with Ansib
 | Patching machines | In scope | `playbooks/patch_rhel.yml` |
 | OpenSCAP scan + remediation | In scope | `playbooks/openscap_scan.yml`, `openscap_remediate.yml` |
 | Application deployment | In scope | `playbooks/deploy_application.yml` |
-| Monitoring / dashboard | In scope | `monitoring/demo-narrative-first-environment.md`, `monitoring/automation-dashboard.md` |
+| Monitoring / dashboard | In scope | `monitoring/demo-narrative-first-environment.md` (4mrmx), `monitoring/demo-narrative-jmvv9-automation-dashboard.md` (jmvv9 product), `monitoring/automation-dashboard.md` |
 
 ## Environment
 
@@ -25,19 +25,19 @@ End-to-end demonstration of managing Red Hat Enterprise Linux servers with Ansib
 | Controller API token | `<controller-token>` (see lab environment — **never commit**) |
 | Git repository | `https://github.com/ronamalka/ansible_for_rhel` |
 | Inventory | Workshop Inventory (Controller) / `inventories/workshop/hosts` (CLI) |
-| Bastion SSH key for RHEL hosts | `~/.ssh/jmvv9key.pem` |
+| Bastion automation SSH key | `~/.ssh/ansible_jmvv9_demo` (generated on bastion; pubkey on RHEL `authorized_keys`) |
 
 ### Target RHEL Hosts
 
 | Host | FQDN | Group | Stage |
 |------|------|-------|-------|
-| node1 | `node1.example.com` | web | dev |
-| node2 | `node2.example.com` | web | prod |
-| node3 | `node3.example.com` | web | dev |
+| node1 | `rhel9.4vkbf.sandbox1878.opentlc.com` | web | dev |
+| node2 | `rhel9.gkmvw.sandbox5326.opentlc.com` | web | prod |
+| node3 | *(not provisioned)* | — | — |
 
-All hosts run **RHEL 8.7**. Managed user: `ec2-user` with key `~/.ssh/jmvv9key.pem` on the bastion.
+Both targets run **RHEL 9.6**. Managed user: `lab-user` with passwordless sudo. AAP **Workshop Credential** (id 35) uses the bastion automation key (`~/.ssh/ansible_jmvv9_demo`, not stored in Git). For ad-hoc runs from the bastion, use the same key path.
 
-> **OpenTLC note:** The full AAP + OpenShift lab (`jmvv9`) ships controller, EDA, and OpenShift — but **RHEL target VMs are not pre-provisioned** in this sandbox type. DNS for `node*.example.com` does not resolve until separate RHEL nodes are added or `/etc/hosts` entries are configured. Job templates launch and connect with the Workshop Credential; jobs fail at SSH until targets exist.
+> **Two-host lab:** Inventory and AAP list `node1` and `node2` only. Add `node3` to `inventories/workshop/hosts` and the Controller inventory when a third RHEL VM is available.
 
 ## Repository Structure
 
@@ -147,7 +147,7 @@ ansible-playbook playbooks/openscap_scan.yml
 
 **What happens:**
 1. Installs `openscap-scanner` and `scap-security-guide`
-2. Runs CIS profile scan against RHEL 8 SCAP content
+2. Runs CIS profile scan against RHEL 9 SCAP content (`ssg-rhel9-ds.xml`)
 3. Generates HTML and XML reports under `/var/log/ansible-demo/openscap/`
 
 **Verify reports:**
@@ -210,9 +210,8 @@ ansible-playbook playbooks/deploy_application.yml \
 **Check in browser or curl:**
 
 ```bash
-curl http://node1.example.com    # dev content
-curl http://node2.example.com    # prod content
-curl http://node3.example.com    # dev content
+curl http://rhel9.4vkbf.sandbox1878.opentlc.com    # node1 dev content
+curl http://rhel9.gkmvw.sandbox5326.opentlc.com    # node2 prod content
 ```
 
 **Controller:** Launch **DEMO - Deploy Web Application** with survey for content customization.
@@ -227,15 +226,18 @@ Confirms each host serves the expected content via the `uri` module.
 
 ### Phase 6: Monitoring (~8 min)
 
-Follow the presenter narrative in [monitoring/demo-narrative-first-environment.md](monitoring/demo-narrative-first-environment.md) (4mrmx controller-only sandbox). Reference [monitoring/automation-dashboard.md](monitoring/automation-dashboard.md) for API endpoints and artifacts.
+**4mrmx (controller-only):** [monitoring/demo-narrative-first-environment.md](monitoring/demo-narrative-first-environment.md) — Controller Dashboard, Jobs, Activity Stream, Host Metrics.
 
-1. Controller Dashboard — Job Status and Recent Jobs before/after the workflow
-2. Drill into DEMO jobs (patch, OpenSCAP, deploy, verify) — stdout, Timing, Details
-3. Workflow visualizer — correlate child jobs and failures (e.g. node1 sudo teaching moment)
-4. Activity Stream — audit trail for admin vs `demo-user` launches
-5. Optional: query `/api/v2/jobs/` or review OpenSCAP HTML reports on hosts
+**jmvv9 (Automation Dashboard & Analytics product):** [monitoring/demo-narrative-jmvv9-automation-dashboard.md](monitoring/demo-narrative-jmvv9-automation-dashboard.md) — ROI/savings analytics via metrics service (AAP 2.7+) or standalone utility on RHEL 9. **Not enabled** on current jmvv9 lab (AAP 2.5.3; operator catalog capped at stable-2.5).
 
-> **Note:** The legacy 4mrmx sandbox uses the **Controller Dashboard** (Jobs, Activity Stream, Host Metrics). The separate **Automation Dashboard** analytics product requires full AAP with metrics service (2.7+) or the standalone dashboard utility (2.6+).
+Reference [monitoring/automation-dashboard.md](monitoring/automation-dashboard.md) for API endpoints and artifacts.
+
+| Segment | Environment | What to show |
+|---------|-------------|--------------|
+| Operational observability | 4mrmx or jmvv9 | Job Status, stdout, workflow visualizer, Activity Stream |
+| Analytics / ROI | jmvv9 (when enabled) | Gateway → Automation Dashboard; `/api/metrics/v1/dashboard_reports/` |
+
+> **Note:** Controller **Dashboard** (job graphs) ≠ **Automation Dashboard** (ROI analytics). The latter requires AAP 2.7 native metrics or the standalone dashboard utility ([solution guide](https://access.redhat.com/articles/7136383)).
 
 ## Automation Controller Setup
 
@@ -249,9 +251,9 @@ Detailed configuration is in:
 
 | Step | Action | Script / Doc |
 |------|--------|--------------|
-| 1 | SSH to bastion; confirm `oc` access and `jmvv9key.pem` | This guide, Environment |
+| 1 | SSH to bastion; confirm `~/.ssh/ansible_jmvv9_demo` reaches node1/node2 | This guide, Environment |
 | 2 | Bootstrap AAP (project, inventory, templates, RBAC) | `controller/setup-rhel-demo-environment.sh` |
-| 3 | Provision or register RHEL target VMs (`node1`–`node3`) | OpenTLC lab guide / DNS or `/etc/hosts` |
+| 3 | *(done for jmvv9)* node1/node2 registered in AAP inventory 34 | This guide |
 | 4 | Verify Patch + Deploy job templates launch | Controller UI or API |
 | 5 | Deploy self-service automation portal on OpenShift | `controller/deploy-self-service-portal.sh` |
 | 6 | Update OAuth redirect URI after portal deploy | [self-service-setup.md](controller/self-service-setup.md) |
@@ -296,13 +298,14 @@ Configured on the OpenTLC full AAP + OpenShift lab:
 | Resource | ID / details |
 |----------|----------------|
 | Project | **RHEL Demo Project** (id: 43) → GitHub repo |
-| Inventory | **Workshop Inventory** (id: 34) — hosts node1, node2, node3 |
-| Credential | **Workshop Credential** (id: 35) — `jmvv9key.pem` |
+| Inventory | **Workshop Inventory** (id: 34) — hosts node1, node2 (`ansible_host` = OpenTLC FQDNs) |
+| Credential | **Workshop Credential** (id: 35) — `lab-user` + bastion automation private key |
 | Job templates | DEMO Patch (44), Scan (45), Remediate (46), Deploy (47), Verify (48) |
 | Workflow | **DEMO - RHEL Operations Pipeline** (id: 49) |
 | Self-service | demo-user with Execute on templates 44–49 |
 | OAuth app | **Ansible Automation Portal** (id: 1) — redirect URI set to portal route |
 | Automation Portal | **Deployed** — `redhat-rhaap-portal` v2.2.0 in `rhaap-portal` namespace |
+| Automation Dashboard | **Not enabled** — AAP 2.5.3; see [monitoring/demo-narrative-jmvv9-automation-dashboard.md](monitoring/demo-narrative-jmvv9-automation-dashboard.md) |
 
 ## Demo Timing
 
@@ -336,7 +339,7 @@ For a shorter demo, skip remediation or limit to a single host with `--limit nod
 
 ### Sandbox recovery (OpenTLC)
 
-If **OpenSCAP Remediate** ran on all `web` hosts before the skip rules were in Git, `ec2-user` may lose passwordless sudo (`sudo -n` fails; `/etc/sudoers.d/90-cloud-init-users` is gone). SSH from the bastion still works; Ansible jobs fail at **Gathering Facts** with `Missing sudo password`.
+If **OpenSCAP Remediate** ran on all `web` hosts before the skip rules were in Git, `lab-user` may lose passwordless sudo (`sudo -n` fails; `/etc/sudoers.d/90-cloud-init-users` is gone). SSH from the bastion still works; Ansible jobs fail at **Gathering Facts** with `Missing sudo password`.
 
 1. **Reset or rebuild** the sandbox RHEL VMs from the OpenTLC lab environment (no in-band recovery without root).
 2. On the Controller, **sync** RHEL Demo Project (id 10) and confirm **Workshop Credential** (id 4) includes the bastion SSH private key.
@@ -346,7 +349,7 @@ If **OpenSCAP Remediate** ran on all `web` hosts before the skip rules were in G
 
 | Issue | Resolution |
 |-------|------------|
-| SSH connection refused | Verify `~/.ssh/jmvv9key.pem` on bastion; confirm RHEL VM DNS/hosts |
+| SSH connection refused | Verify `~/.ssh/ansible_jmvv9_demo` on bastion; confirm OpenTLC FQDN resolves from bastion |
 | Hostname not resolved (`node*.example.com`) | RHEL VMs not provisioned in this lab type — add targets or `/etc/hosts` |
 | `Missing sudo password` on RHEL nodes | CIS remediate removed `/etc/sudoers.d/90-cloud-init-users`; restore VMs via **OpenTLC sandbox reset** (cannot be fixed over SSH without a root password). After reset, run OpenSCAP remediate with **limit `node1`** only; repo skips `sudo_remove_nopasswd`. |
 | OpenSCAP timeout | Increase job template timeout to 3600s; use `--limit node1` |
@@ -358,7 +361,7 @@ If **OpenSCAP Remediate** ran on all `web` hosts before the skip rules were in G
 
 - [Ansible RHEL Workshop Deck](https://labs.demoredhat.com/decks/ansible_rhel.pdf)
 - [Ansible RHEL Workshop Exercises](https://labs.demoredhat.com/exercises/ansible_rhel/)
-- [OpenSCAP RHEL 8 Guide](https://www.redhat.com/en/blog/openscap-rhel8)
+- [OpenSCAP RHEL 9 Guide](https://www.redhat.com/en/blog/openscap-rhel9)
 - [Ansible Automation Platform Docs](https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform)
 
 

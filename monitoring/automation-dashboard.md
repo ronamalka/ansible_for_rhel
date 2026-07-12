@@ -7,9 +7,28 @@ Monitoring and observability for the RHEL Operations demo. For a **presenter-rea
 | Environment | Primary UI | Automation Dashboard (ROI/analytics) |
 |-------------|------------|--------------------------------------|
 | **4mrmx** (controller VM, ~AAP 4.5.x) | Controller **Dashboard**, **Jobs**, **Activity Stream**, **Host Metrics** | Not included — use Jobs/Dashboard for observability |
-| **jmvv9** (full AAP 2.5+ on OpenShift) | AAP Gateway + controller route | Optional: metrics service + Automation Dashboard (native in AAP 2.7+) |
+| **jmvv9** (full AAP 2.5+ on OpenShift) | AAP Gateway + controller route | **Not enabled** on current lab (AAP 2.5.3; catalog lacks 2.7). See [demo-narrative-jmvv9-automation-dashboard.md](demo-narrative-jmvv9-automation-dashboard.md) |
 
 The standalone [Automation Dashboard utility](https://access.redhat.com/articles/7136383) (AAP 2.6+) is a separate install that syncs from Controller API. Do not expect **Views → Automation Dashboard** on the legacy 4mrmx controller-only sandbox.
+
+## Automation Dashboard & Analytics (jmvv9 — product, not Controller Jobs)
+
+**Status (2026-07-12):** jmvv9 runs **AAP 2.5.3**. Native Automation Dashboard requires **AAP 2.7+** with metrics service (`FEATURE_DASHBOARD_COLLECTION_ENABLED: true`). The OpenTLC lab catalog only exposes operator channels through **stable-2.5**, so in-cluster upgrade to 2.7 is blocked. Gateway `/api/metrics/v1/dashboard_reports/` returns **404**.
+
+**Paths to enable:**
+
+| Path | Requirement |
+|------|-------------|
+| Native (2.7+) | Operator channel `stable-2.7`, metrics enabled on `AnsibleAutomationPlatform` CR, dashboard via Gateway |
+| Standalone utility | RHEL 9 host (bastion qualifies) + Customer Portal installer bundle + Gateway OAuth app |
+
+**Presenter narrative:** [demo-narrative-jmvv9-automation-dashboard.md](demo-narrative-jmvv9-automation-dashboard.md)
+
+**Target URLs when enabled:**
+
+- Native: `https://aap-aap.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com` → Automation Dashboard
+- API: `.../api/metrics/v1/dashboard_reports/report/?period=last_90_days`
+- Standalone: `https://<dashboard-host>:8447/`
 
 ## Controller Dashboard (4mrmx and all Controller installs)
 

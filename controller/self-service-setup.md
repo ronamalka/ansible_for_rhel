@@ -197,6 +197,7 @@ Sign in with **demo-user** credentials (same as controller). Configure portal RB
 | Portal RBAC for demo-user | **Manual** — assign Demo Self-Service team in portal Administration → RBAC |
 | External DNS | Portal hostname may show `NXDOMAIN` briefly; route is reachable via OpenShift router |
 | Known pitfall | Duplicate `catalog.providers.rhaap.production` in merged app-config → `REPAIR_APP_CONFIG=1 ./controller/deploy-self-service-portal.sh` |
+| Automation Dashboard | **Not enabled** — separate product; see `monitoring/demo-narrative-jmvv9-automation-dashboard.md` |
 
 Automated deploy on bastion:
 
