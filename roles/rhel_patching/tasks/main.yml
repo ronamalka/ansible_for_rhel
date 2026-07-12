@@ -1,0 +1,40 @@
+---
+- name: Update all packages
+  ansible.builtin.package:
+    name: "*"
+    state: latest
+    exclude: "{{ patch_exclude_packages }}"
+  register: rhel_patching_result
+  when: not patch_security_only | bool
+
+- name: Update security-related packages only
+  ansible.builtin.package:
+    name: "*"
+    state: latest
+    security: true
+    exclude: "{{ patch_exclude_packages }}"
+  register: rhel_patching_security_result
+  when: patch_security_only | bool
+
+- name: Check if reboot is required
+  ansible.builtin.command:
+    cmd: needs-restarting -r
+  register: rhel_patching_reboot_check
+  changed_when: false
+  failed_when: false
+
+- name: Reboot host when updates require it
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    msg: "Reboot initiated by Ansible patching role"
+  when:
+    - patch_reboot | bool
+    - rhel_patching_reboot_check.rc == 1
+
+- name: Report patching summary
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Security-only mode: {{ patch_security_only }}"
+      - "Reboot required: {{ rhel_patching_reboot_check.rc == 1 }}"
+      - "Packages changed: {{ (rhel_patching_result.changed | default(false)) or (rhel_patching_security_result.changed | default(false)) }}"

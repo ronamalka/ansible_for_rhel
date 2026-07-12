@@ -1,0 +1,9 @@
+---
+- name: Patch RHEL web servers
+  hosts: web
+  become: true
+  vars:
+    patch_security_only: "{{ security_only | default(false) }}"
+    patch_reboot: "{{ reboot_after_patch | default(false) }}"
+  roles:
+    - rhel_patching

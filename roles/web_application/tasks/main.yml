@@ -1,0 +1,47 @@
+---
+- name: Install web application packages
+  ansible.builtin.dnf:
+    name: "{{ web_app_packages }}"
+    state: present
+
+- name: Enable and start firewalld
+  ansible.builtin.service:
+    name: firewalld
+    enabled: true
+    state: started
+
+- name: Allow HTTP through firewall
+  ansible.posix.firewalld:
+    service: "{{ web_app_firewall_service }}"
+    permanent: true
+    state: enabled
+    immediate: true
+
+- name: Deploy index.html from template
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: apache
+    group: apache
+    mode: "0644"
+  notify: Restart Apache
+
+- name: Enable and start Apache
+  ansible.builtin.service:
+    name: "{{ web_app_service }}"
+    enabled: true
+    state: started
+
+- name: Verify web application responds
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host | default(inventory_hostname) }}"
+    return_content: true
+    status_code: 200
+  register: web_app_health
+  until: web_app_health.status == 200
+  retries: 3
+  delay: 5
+
+- name: Display deployed content snippet
+  ansible.builtin.debug:
+    msg: "{{ web_app_health.content | regex_replace('\\s+', ' ') | truncate(120) }}"

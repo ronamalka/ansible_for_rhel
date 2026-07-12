@@ -1,0 +1,5 @@
+---
+- name: Reboot managed host
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    msg: "Reboot initiated by Ansible patching role"

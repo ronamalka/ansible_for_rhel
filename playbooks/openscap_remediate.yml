@@ -1,0 +1,8 @@
+---
+- name: Remediate OpenSCAP findings on RHEL hosts
+  hosts: web
+  become: true
+  vars:
+    openscap_run_remediation: true
+  roles:
+    - openscap

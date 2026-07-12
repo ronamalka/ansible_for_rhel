@@ -1,0 +1,6 @@
+---
+- name: Deploy Apache web application
+  hosts: web
+  become: true
+  roles:
+    - web_application

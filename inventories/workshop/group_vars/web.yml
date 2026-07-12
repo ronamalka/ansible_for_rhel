@@ -1,0 +1,7 @@
+---
+# Default stage for web servers; override per-host as needed.
+stage: dev
+
+# Application content defaults (overridden by Controller survey or extra vars).
+dev_content: "Ansible-managed development content"
+prod_content: "Ansible-managed production content"

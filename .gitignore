@@ -1,0 +1,20 @@
+# Ansible
+*.retry
+.vault_pass
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# OpenSCAP reports (if copied locally)
+*.html
+*-results.xml

@@ -1,0 +1,8 @@
+---
+- name: Run OpenSCAP compliance scan on RHEL hosts
+  hosts: web
+  become: true
+  vars:
+    openscap_run_remediation: false
+  roles:
+    - openscap

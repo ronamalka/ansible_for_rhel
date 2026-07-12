@@ -1,0 +1,66 @@
+---
+- name: Install OpenSCAP packages
+  ansible.builtin.dnf:
+    name: "{{ openscap_packages }}"
+    state: present
+
+- name: Ensure OpenSCAP report directory exists
+  ansible.builtin.file:
+    path: "{{ openscap_report_dir }}"
+    state: directory
+    mode: "0750"
+
+- name: Run OpenSCAP compliance scan
+  ansible.builtin.command:
+    cmd: >-
+      oscap xccdf eval
+      --profile {{ openscap_profile }}
+      --results {{ openscap_report_dir }}/{{ inventory_hostname }}-results.xml
+      --report {{ openscap_report_dir }}/{{ inventory_hostname }}-report.html
+      --oval-results
+      {{ openscap_content_path }}
+  register: openscap_scan_result
+  changed_when: openscap_scan_result.rc in [0, 2]
+  failed_when: openscap_scan_result.rc not in [0, 1, 2]
+
+- name: Display scan exit code summary
+  ansible.builtin.debug:
+    msg:
+      - "OpenSCAP scan completed on {{ inventory_hostname }}"
+      - "Exit code: {{ openscap_scan_result.rc }} (0=pass, 1=error, 2=failures found)"
+      - "HTML report: {{ openscap_report_dir }}/{{ inventory_hostname }}-report.html"
+      - "Results XML: {{ openscap_report_dir }}/{{ inventory_hostname }}-results.xml"
+
+- name: Run OpenSCAP remediation
+  ansible.builtin.command:
+    cmd: >-
+      oscap xccdf eval
+      --profile {{ openscap_profile }}
+      --remediate
+      --results {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-results.xml
+      --report {{ openscap_report_dir }}/{{ inventory_hostname }}-remediate-report.html
+      {{ openscap_content_path }}
+  register: openscap_remediate_result
+  changed_when: openscap_remediate_result.rc in [0, 2]
+  failed_when: openscap_remediate_result.rc not in [0, 1, 2]
+  when: openscap_run_remediation | bool
+
+- name: Re-run OpenSCAP scan after remediation
+  ansible.builtin.command:
+    cmd: >-
+      oscap xccdf eval
+      --profile {{ openscap_profile }}
+      --results {{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-results.xml
+      --report {{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-report.html
+      {{ openscap_content_path }}
+  register: openscap_post_scan_result
+  changed_when: openscap_post_scan_result.rc in [0, 2]
+  failed_when: openscap_post_scan_result.rc not in [0, 1, 2]
+  when: openscap_run_remediation | bool
+
+- name: Display post-remediation scan summary
+  ansible.builtin.debug:
+    msg:
+      - "Post-remediation scan exit code: {{ openscap_post_scan_result.rc }}"
+      - "Report: {{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-report.html"
+  when: openscap_run_remediation | bool

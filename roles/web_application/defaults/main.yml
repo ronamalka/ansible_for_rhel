@@ -1,0 +1,8 @@
+---
+# Web application defaults
+web_app_packages:
+  - httpd
+  - firewalld
+web_app_service: httpd
+web_app_firewall_service: http
+web_app_port: 80

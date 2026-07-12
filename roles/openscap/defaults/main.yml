@@ -1,0 +1,9 @@
+---
+# OpenSCAP defaults for RHEL 8
+openscap_content_path: /usr/share/xml/scap/ssg/content/ssg-rhel8-ds.xml
+openscap_profile: xccdf_org.ssgproject.content_profile_cis
+openscap_report_dir: /var/log/ansible-demo/openscap
+openscap_run_remediation: false
+openscap_packages:
+  - openscap-scanner
+  - scap-security-guide

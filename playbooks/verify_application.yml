@@ -1,0 +1,15 @@
+---
+- name: Verify web application endpoints
+  hosts: web
+  gather_facts: false
+  tasks:
+    - name: Check HTTP response from each host
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host | default(inventory_hostname) }}"
+        return_content: true
+        status_code: 200
+      register: web_check
+
+    - name: Display page content
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} ({{ stage | default('unknown') }}): {{ web_check.content | regex_replace('\\s+', ' ') | truncate(100) }}"

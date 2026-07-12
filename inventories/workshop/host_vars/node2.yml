@@ -1,0 +1,3 @@
+---
+# node2 is the production web server in this demo environment.
+stage: prod

@@ -1,0 +1,18 @@
+---
+# End-to-end CLI demo orchestrator (run from ansible-1 bastion).
+# For Controller demos, use the workflow described in controller/workflow-setup.md.
+
+- name: "Phase 1: Patch RHEL web servers"
+  ansible.builtin.import_playbook: patch_rhel.yml
+
+- name: "Phase 2: OpenSCAP compliance scan"
+  ansible.builtin.import_playbook: openscap_scan.yml
+
+- name: "Phase 3: OpenSCAP remediation"
+  ansible.builtin.import_playbook: openscap_remediate.yml
+
+- name: "Phase 4: Deploy web application"
+  ansible.builtin.import_playbook: deploy_application.yml
+
+- name: "Phase 5: Verify application deployment"
+  ansible.builtin.import_playbook: verify_application.yml

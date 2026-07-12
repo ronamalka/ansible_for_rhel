@@ -1,0 +1,5 @@
+---
+# Patching defaults
+patch_security_only: false
+patch_reboot: false
+patch_exclude_packages: []

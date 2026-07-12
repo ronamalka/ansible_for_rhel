@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ inventory_hostname }} - {{ stage | upper }}</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; background: #f5f5f5; }
+    .card { background: #fff; padding: 1.5rem; border-radius: 8px; max-width: 640px; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 4px; color: #fff; }
+    .dev { background: #0066cc; }
+    .prod { background: #cc0000; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>RHEL Web Application Demo</h1>
+    <p>
+      <span class="badge {{ stage }}">{{ stage | upper }}</span>
+      served from <strong>{{ inventory_hostname }}</strong>
+    </p>
+    {% if stage == 'prod' %}
+    <p>{{ prod_content }}</p>
+    {% else %}
+    <p>{{ dev_content }}</p>
+    {% endif %}
+    <hr>
+    <small>Deployed by Ansible Automation Platform</small>
+  </div>
+</body>
+</html>
