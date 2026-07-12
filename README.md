@@ -10,7 +10,7 @@ End-to-end demonstration of managing Red Hat Enterprise Linux servers with Ansib
 | Patching machines | In scope | `playbooks/patch_rhel.yml` |
 | OpenSCAP scan + remediation | In scope | `playbooks/openscap_scan.yml`, `openscap_remediate.yml` |
 | Application deployment | In scope | `playbooks/deploy_application.yml` |
-| Monitoring / dashboard | In scope | `monitoring/automation-dashboard.md` |
+| Monitoring / dashboard | In scope | `monitoring/demo-narrative-first-environment.md`, `monitoring/automation-dashboard.md` |
 
 ## Environment
 
@@ -72,7 +72,8 @@ ansible_for_rhel/
 │   ├── demo-template-metadata.json    # Template descriptions for portal
 │   └── patch-rhel-survey.json
 └── monitoring/
-    └── automation-dashboard.md        # Dashboard demo script
+    ├── demo-narrative-first-environment.md  # Presenter script (4mrmx monitoring segment)
+    └── automation-dashboard.md              # API, artifacts, dashboard reference
 ```
 
 ## Quick Start (CLI on Bastion)
@@ -224,14 +225,17 @@ ansible-playbook playbooks/verify_application.yml
 
 Confirms each host serves the expected content via the `uri` module.
 
-### Phase 6: Monitoring (~5 min)
+### Phase 6: Monitoring (~8 min)
 
-Follow the script in `monitoring/automation-dashboard.md`:
+Follow the presenter narrative in [monitoring/demo-narrative-first-environment.md](monitoring/demo-narrative-first-environment.md) (4mrmx controller-only sandbox). Reference [monitoring/automation-dashboard.md](monitoring/automation-dashboard.md) for API endpoints and artifacts.
 
-1. Open Automation Dashboard before/after the workflow
-2. Drill into job stdout and timing
-3. Review OpenSCAP HTML reports
-4. Query the API for job metrics
+1. Controller Dashboard — Job Status and Recent Jobs before/after the workflow
+2. Drill into DEMO jobs (patch, OpenSCAP, deploy, verify) — stdout, Timing, Details
+3. Workflow visualizer — correlate child jobs and failures (e.g. node1 sudo teaching moment)
+4. Activity Stream — audit trail for admin vs `demo-user` launches
+5. Optional: query `/api/v2/jobs/` or review OpenSCAP HTML reports on hosts
+
+> **Note:** The legacy 4mrmx sandbox uses the **Controller Dashboard** (Jobs, Activity Stream, Host Metrics). The separate **Automation Dashboard** analytics product requires full AAP with metrics service (2.7+) or the standalone dashboard utility (2.6+).
 
 ## Automation Controller Setup
 
