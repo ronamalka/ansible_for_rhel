@@ -48,10 +48,18 @@
   ansible.builtin.include_tasks: parse_score.yml
   vars:
     openscap_score_results_path: "{{ openscap_report_dir }}/{{ inventory_hostname }}-cis-baseline-results.xml"
-    openscap_score_fact_name: openscap_cis_baseline_score
   when:
     - openscap_demo_mode | bool
     - openscap_show_cis_baseline | bool
+
+- name: Store CIS baseline compliance score
+  tags: [scan, remediate]
+  ansible.builtin.set_fact:
+    openscap_cis_baseline_score: "{{ openscap_parsed_score }}"
+  when:
+    - openscap_demo_mode | bool
+    - openscap_show_cis_baseline | bool
+    - openscap_parsed_score is defined
 
 - name: Run OpenSCAP compliance scan
   tags: [scan, remediate]
@@ -73,7 +81,12 @@
   ansible.builtin.include_tasks: parse_score.yml
   vars:
     openscap_score_results_path: "{{ openscap_report_dir }}/{{ inventory_hostname }}-results.xml"
-    openscap_score_fact_name: openscap_scan_score
+
+- name: Store scan compliance score
+  tags: [scan, remediate]
+  ansible.builtin.set_fact:
+    openscap_scan_score: "{{ openscap_parsed_score }}"
+  when: openscap_parsed_score is defined
 
 - name: Display scan exit code summary
   tags: [scan, remediate]
@@ -161,8 +174,15 @@
   ansible.builtin.include_tasks: parse_score.yml
   vars:
     openscap_score_results_path: "{{ openscap_report_dir }}/{{ inventory_hostname }}-post-remediate-results.xml"
-    openscap_score_fact_name: openscap_post_remediate_score
   when: openscap_run_remediation | bool
+
+- name: Store post-remediation compliance score
+  tags: [remediate]
+  ansible.builtin.set_fact:
+    openscap_post_remediate_score: "{{ openscap_parsed_score }}"
+  when:
+    - openscap_run_remediation | bool
+    - openscap_parsed_score is defined
 
 - name: Display post-remediation scan summary
   tags: [remediate]

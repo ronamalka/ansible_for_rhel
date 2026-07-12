@@ -10,6 +10,6 @@
   changed_when: false
   failed_when: openscap_score_cmd.stdout | length == 0
 
-- name: Set parsed OpenSCAP score fact
+- name: Publish parsed OpenSCAP score
   ansible.builtin.set_fact:
-    "{{ openscap_score_fact_name }}": "{{ openscap_score_cmd.stdout | float }}"
+    openscap_parsed_score: "{{ openscap_score_cmd.stdout | float }}"
