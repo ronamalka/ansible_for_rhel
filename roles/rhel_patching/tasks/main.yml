@@ -1,4 +1,17 @@
 ---
+- name: List pending package updates
+  ansible.builtin.dnf:
+    list: updates
+    security: "{{ patch_security_only | bool }}"
+  register: rhel_patching_pending_updates
+  changed_when: false
+
+- name: Report pending package updates
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Pending package updates ({{ rhel_patching_pending_updates.results | length }}): {{ rhel_patching_pending_updates.results | map(attribute='name') | list | join(', ') if (rhel_patching_pending_updates.results | length > 0) else 'none' }}"
+
 - name: Update all packages
   ansible.builtin.package:
     name: "*"
@@ -37,4 +50,4 @@
       - "Host: {{ inventory_hostname }}"
       - "Security-only mode: {{ patch_security_only }}"
       - "Reboot required: {{ rhel_patching_reboot_check.rc == 1 }}"
-      - "Packages changed: {{ (rhel_patching_result.changed | default(false)) or (rhel_patching_security_result.changed | default(false)) }}"
+      - "Packages updated: {{ rhel_patching_pending_updates.results | map(attribute='name') | list | join(', ') if ((rhel_patching_result.changed | default(false)) or (rhel_patching_security_result.changed | default(false))) and (rhel_patching_pending_updates.results | length > 0) else 'none' }}"
