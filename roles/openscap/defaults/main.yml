@@ -1,6 +1,6 @@
 ---
-# OpenSCAP defaults for RHEL 8
-openscap_content_path: /usr/share/xml/scap/ssg/content/ssg-rhel8-ds.xml
+# OpenSCAP defaults for RHEL 9
+openscap_content_path: /usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml
 openscap_profile: xccdf_org.ssgproject.content_profile_cis
 openscap_report_dir: /var/log/ansible-demo/openscap
 openscap_run_remediation: false
@@ -23,4 +23,4 @@ openscap_skip_remediation_rules:
 
 openscap_workshop_sudoers_dropin: /etc/sudoers.d/90-cloud-init-users
 openscap_workshop_sudoers_content: |
-  ec2-user ALL=(ALL) NOPASSWD:ALL
+  lab-user ALL=(ALL) NOPASSWD:ALL

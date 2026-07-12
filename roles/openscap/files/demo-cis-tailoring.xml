@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xccdf:Tailoring xmlns:xccdf="http://checklists.nist.gov/xccdf/1.2"
                  id="xccdf_org_tailoring_cis_workshop">
-  <xccdf:benchmark href="/usr/share/xml/scap/ssg/content/ssg-rhel8-ds.xml"
-                   id="xccdf_org.ssgproject.content_benchmark_RHEL-8"/>
+  <xccdf:benchmark href="/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml"
+                   id="xccdf_org.ssgproject.content_benchmark_RHEL-9"/>
   <xccdf:version time="2026-07-12T00:00:00">1</xccdf:version>
   <xccdf:Profile id="xccdf_org.ssgproject.content_profile_cis_workshop"
                  extends="xccdf_org.ssgproject.content_profile_cis">
@@ -10,7 +10,7 @@
     <xccdf:description>
       Workshop demo profile derived from CIS Level 2 Server. Excludes rules
       that require disk reprovisioning, GRUB passwords, root password policy,
-      or passwordless sudo removal (Ansible needs NOPASSWD for ec2-user).
+      or passwordless sudo removal (Ansible needs NOPASSWD for lab-user).
     </xccdf:description>
     <!-- Disk layout: cannot be auto-remediated on running VMs -->
     <xccdf:select idref="xccdf_org.ssgproject.content_rule_partition_for_home" selected="false"/>

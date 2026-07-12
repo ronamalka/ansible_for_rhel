@@ -38,7 +38,7 @@
 
 - name: Verify web application responds
   ansible.builtin.uri:
-    url: "http://{{ ansible_host | default(inventory_hostname) }}"
+    url: "http://127.0.0.1"
     return_content: true
     status_code: 200
   register: web_app_health

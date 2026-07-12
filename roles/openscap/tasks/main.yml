@@ -124,7 +124,7 @@
   failed_when: openscap_remediate_result.rc != 0
   when: openscap_run_remediation | bool
 
-- name: Restore workshop passwordless sudo for Ansible (ec2-user)
+- name: Restore workshop passwordless sudo for Ansible (lab-user)
   tags: [remediate]
   ansible.builtin.copy:
     dest: "{{ openscap_workshop_sudoers_dropin }}"
@@ -135,7 +135,7 @@
     validate: visudo -cf %s
   when: openscap_run_remediation | bool
 
-- name: Verify ec2-user passwordless sudo for Ansible
+- name: Verify lab-user passwordless sudo for Ansible
   tags: [remediate]
   ansible.builtin.command: sudo -n true
   become: false

@@ -12,3 +12,7 @@ web_app_host_stages:
   node1: dev
   node2: prod
   node3: dev
+
+# Page body text (mirrors inventories/workshop/group_vars/web.yml for Controller runs).
+dev_content: "Ansible-managed development content"
+prod_content: "Ansible-managed production content"
