@@ -108,6 +108,7 @@ curl -sk -u "admin:${CONTROLLER_PASSWORD}" -X PATCH -H 'Content-Type: applicatio
 | Limit | `web` |
 | Privilege Escalation | Enabled |
 | Job Tags | `scan` |
+| Ask limit on launch | Yes (use `node1` for faster demos) |
 | Timeout | 1800 |
 
 ### 3. OpenSCAP Remediation

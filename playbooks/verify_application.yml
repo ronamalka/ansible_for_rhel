@@ -2,6 +2,7 @@
 - name: Verify web application endpoints
   hosts: web
   gather_facts: false
+  become: false
   tasks:
     - name: Check HTTP response from each host
       ansible.builtin.uri:
