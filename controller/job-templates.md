@@ -33,6 +33,17 @@ This project is configured on the sandbox controller and syncs from the public G
 scp -r ansible_for_rhel/ student1@ansible-1.4mrmx.sandbox3261.opentlc.com:~/ansible_for_rhel/
 ```
 
+## Post-create: attach SSH credential
+
+Job templates do not store SSH keys in Git. After creating the DEMO templates, attach **Workshop Credential** (Machine, id 4 on the sandbox):
+
+```bash
+export CONTROLLER_PASSWORD='<controller-admin-password>'
+./controller/configure-demo-job-templates.sh
+```
+
+Without this step, jobs connect as `root` with no key and fail with `Permission denied (publickey,...)`.
+
 ## Job Templates
 
 Create each template via **Automation Execution → Templates → Create template → Create job template**.
