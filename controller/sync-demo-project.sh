@@ -23,7 +23,7 @@ code="$(curl -sk "${auth[@]}" -o /tmp/sync-demo-project.txt -w '%{http_code}' \
   -d '{}' \
   "${CONTROLLER}/api/v2/projects/${PROJECT_ID}/update/")"
 
-if [[ "${code}" != "200" && "${code}" != "201" ]]; then
+if [[ "${code}" != "200" && "${code}" != "201" && "${code}" != "202" ]]; then
   echo "Project sync failed (HTTP ${code})" >&2
   cat /tmp/sync-demo-project.txt >&2
   exit 1

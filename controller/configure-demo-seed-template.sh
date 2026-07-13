@@ -81,7 +81,7 @@ print(json.dumps({
   seed_id="$(lookup_id "/api/v2/job_templates/" "name" "${SEED_TEMPLATE_NAME}")"
   echo "Created seed template id: ${seed_id}"
 else
-  code=$(api_patch "/api/v2/job_templates/${seed_id}/" "$(python3 -c "
+  payload=$(python3 -c "
 import json
 print(json.dumps({
     'playbook': '''${SEED_PLAYBOOK}''',
@@ -90,7 +90,8 @@ print(json.dumps({
     'project': ${PROJECT_ID},
     'inventory': ${INVENTORY_ID},
 }))
-")")
+")
+  code=$(api_patch "/api/v2/job_templates/${seed_id}/" "${payload}")
   require_ok "${code}" "update seed job template"
   echo "Updated seed template id: ${seed_id}"
 fi
@@ -112,24 +113,29 @@ code=$(api_patch "/api/v2/job_templates/${PATCH_TEMPLATE_ID}/" '{"survey_enabled
 require_ok "${code}" "enable patch survey"
 echo "Patch survey updated"
 
-echo "=== Ensuring workflow ${WORKFLOW_ID} starts with seed → patch ==="
-wf_nodes_json="$(api_get "/api/v2/workflow_job_templates/${WORKFLOW_ID}/workflow_nodes/")"
-seed_node_id="$(python3 -c "
+find_workflow_nodes() {
+  python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 seed_tid = int('''${seed_id}''')
 patch_tid = int('''${PATCH_TEMPLATE_ID}''')
-seed_node = patch_node = None
+seed_node = patch_node = ''
 for node in data.get('results', []):
-    ujt = node.get('summary_fields', {}).get('unified_job_template', {})
-    tid = ujt.get('id')
+    tid = node.get('unified_job_template') or node.get('summary_fields', {}).get('unified_job_template', {}).get('id')
     if tid == seed_tid:
-        seed_node = node['id']
+        seed_node = str(node['id'])
     if tid == patch_tid:
-        patch_node = node['id']
-print(f'{seed_node or \"\"} {patch_node or \"\"}')
-" <<< "${wf_nodes_json}")"
-read -r existing_seed_node existing_patch_node <<< "${seed_node_id}"
+        patch_node = str(node['id'])
+print(f'seed={seed_node}')
+print(f'patch={patch_node}')
+" <<< "${wf_nodes_json}"
+}
+
+echo "=== Ensuring workflow ${WORKFLOW_ID} starts with seed → patch ==="
+wf_nodes_json="$(api_get "/api/v2/workflow_job_templates/${WORKFLOW_ID}/workflow_nodes/")"
+_wf_out="$(find_workflow_nodes)"
+existing_seed_node="$(printf '%s\n' "${_wf_out}" | sed -n 's/^seed=//p')"
+existing_patch_node="$(printf '%s\n' "${_wf_out}" | sed -n 's/^patch=//p')"
 
 if [[ -z "${existing_seed_node}" ]]; then
   payload=$(python3 -c "
@@ -139,27 +145,24 @@ print(json.dumps({'unified_job_template': ${seed_id}, 'identifier': 'seed'}))
   code=$(api_post "/api/v2/workflow_job_templates/${WORKFLOW_ID}/workflow_nodes/" "${payload}")
   require_ok "${code}" "create workflow seed node"
   wf_nodes_json="$(api_get "/api/v2/workflow_job_templates/${WORKFLOW_ID}/workflow_nodes/")"
-  existing_seed_node="$(python3 -c "
-import json, sys
-seed_tid = int('''${seed_id}''')
-for node in json.load(sys.stdin).get('results', []):
-    if node.get('summary_fields', {}).get('unified_job_template', {}).get('id') == seed_tid:
-        print(node['id']); break
-" <<< "${wf_nodes_json}")"
+  _wf_out="$(find_workflow_nodes)"
+  existing_seed_node="$(printf '%s\n' "${_wf_out}" | sed -n 's/^seed=//p')"
+  existing_patch_node="$(printf '%s\n' "${_wf_out}" | sed -n 's/^patch=//p')"
   echo "Created workflow seed node ${existing_seed_node}"
 fi
 
 if [[ -z "${existing_patch_node}" ]]; then
   echo "Patch node not found in workflow ${WORKFLOW_ID}; link seed manually in the visualizer." >&2
 else
-  # Clear existing parents of patch node, then seed -> patch on success
+  # Find nodes that currently point to the patch node (workflow parents)
   parent_ids="$(python3 -c "
 import json, sys
 patch_node = int('''${existing_patch_node}''')
+parents = []
 for node in json.load(sys.stdin).get('results', []):
-    if node['id'] == patch_node:
-        print(','.join(str(x) for x in node.get('always_nodes', []) + node.get('success_nodes', [])))
-        break
+    if patch_node in node.get('success_nodes', []) or patch_node in node.get('always_nodes', []):
+        parents.append(str(node['id']))
+print(','.join(parents))
 " <<< "${wf_nodes_json}")"
   if [[ -n "${parent_ids}" ]]; then
     IFS=',' read -ra PIDS <<< "${parent_ids}"
@@ -169,16 +172,22 @@ for node in json.load(sys.stdin).get('results', []):
     done
   fi
   code=$(api_post "/api/v2/workflow_job_template_nodes/${existing_seed_node}/success_nodes/" "{\"id\": ${existing_patch_node}}")
-  echo "Linked seed node ${existing_seed_node} -> patch node ${existing_patch_node} (HTTP ${code})"
+  if [[ "${code}" == "204" || "${code}" == "201" || "${code}" == "200" ]]; then
+    echo "Linked seed node ${existing_seed_node} -> patch node ${existing_patch_node} (HTTP ${code})"
+  else
+    echo "Warning: link seed -> patch returned HTTP ${code}; verify workflow ${WORKFLOW_ID} in the visualizer" >&2
+    cat /tmp/seed_setup_resp.txt >&2 || true
+  fi
 
-  # Make seed the workflow start (remove parents from seed node)
+  wf_nodes_json="$(api_get "/api/v2/workflow_job_templates/${WORKFLOW_ID}/workflow_nodes/")"
   seed_parents="$(python3 -c "
 import json, sys
 seed_node = int('''${existing_seed_node}''')
+parents = []
 for node in json.load(sys.stdin).get('results', []):
-    if node['id'] == seed_node:
-        print(','.join(str(x) for x in node.get('always_nodes', []) + node.get('success_nodes', [])))
-        break
+    if seed_node in node.get('success_nodes', []) or seed_node in node.get('always_nodes', []):
+        parents.append(str(node['id']))
+print(','.join(parents))
 " <<< "${wf_nodes_json}")"
   if [[ -n "${seed_parents}" ]]; then
     IFS=',' read -ra SPIDS <<< "${seed_parents}"
