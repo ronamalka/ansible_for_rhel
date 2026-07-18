@@ -1,0 +1,47 @@
+---
+- name: Remove demo web application state
+  hosts: web
+  become: true
+  vars:
+    web_app_service: httpd
+    web_app_firewall_service: http
+  tasks:
+    - name: Remove deployed index.html
+      ansible.builtin.file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: Stop and disable Apache
+      ansible.builtin.service:
+        name: "{{ web_app_service }}"
+        enabled: false
+        state: stopped
+
+    - name: Gather service facts for firewalld check
+      ansible.builtin.service_facts:
+
+    - name: Remove HTTP from firewall
+      ansible.posix.firewalld:
+        service: "{{ web_app_firewall_service }}"
+        permanent: true
+        state: disabled
+        immediate: true
+      when: ansible_facts.services['firewalld.service'] is defined
+      failed_when: false
+
+    - name: Verify local HTTP is not serving demo app
+      ansible.builtin.uri:
+        url: "http://127.0.0.1"
+        status_code: [200, 403, -1]
+      register: web_removed_check
+      failed_when: web_removed_check.status | default(0) == 200
+      ignore_errors: true
+
+    - name: Report removal summary
+      ansible.builtin.debug:
+        msg:
+          - "========== REMOVE SUMMARY: {{ inventory_hostname }} =========="
+          - "index.html: absent"
+          - "{{ web_app_service }}: stopped/disabled"
+          - "firewall http: disabled (if firewalld present)"
+          - "HTTP check status: {{ web_removed_check.status | default('unreachable') }}"
