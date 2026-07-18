@@ -15,7 +15,7 @@ PATCH_APP_CONFIG="${PATCH_APP_CONFIG:-1}"
 RESTART_PORTAL="${RESTART_PORTAL:-0}"
 
 # Controller job template IDs to drop from portal (remove demo-self-service label)
-UNPUBLISH_TEMPLATE_IDS="${UNPUBLISH_TEMPLATE_IDS:-44 47 48}"
+UNPUBLISH_TEMPLATE_IDS="${UNPUBLISH_TEMPLATE_IDS:-44 47 48 51}"
 # Keep visible via label filter (OpenSCAP + seed)
 PUBLISH_TEMPLATE_IDS="${PUBLISH_TEMPLATE_IDS:-45 46 50}"
 
