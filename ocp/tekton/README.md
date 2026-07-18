@@ -20,8 +20,8 @@ Builds the Flask sample app from a ConfigMap source bundle and deploys it to a t
 ```bash
 export TARGET_NS=demo-web-test
 oc create namespace "${TARGET_NS}" --dry-run=client -o yaml | oc apply -f -
-oc apply -f openshift/tekton/rbac.yaml -n "${TARGET_NS}"
-oc apply -f openshift/tekton/pipeline.yaml -n "${TARGET_NS}"
+oc apply -f ocp/tekton/rbac.yaml -n "${TARGET_NS}"
+oc apply -f ocp/tekton/pipeline.yaml -n "${TARGET_NS}"
 
 # Create source ConfigMap from repo
 oc create configmap demo-web-source \
@@ -32,7 +32,7 @@ oc create configmap demo-web-source \
 
 # Launch pipeline
 sed "s/REPLACE_NAMESPACE/${TARGET_NS}/g; s/REPLACE_APP_NAME/demo-web/g; s/REPLACE_SOURCE_CONFIGMAP/demo-web-source/g" \
-  openshift/tekton/pipelinerun-template.yaml | oc create -f - -n "${TARGET_NS}"
+  ocp/tekton/pipelinerun-template.yaml | oc create -f - -n "${TARGET_NS}"
 
 oc get pipelinerun -n "${TARGET_NS}"
 oc get route -n "${TARGET_NS}"

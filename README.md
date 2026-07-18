@@ -61,7 +61,7 @@ ansible_for_rhel/
 │   └── site.yml                       # Full CLI pipeline
 ├── apps/
 │   └── demo-web/                      # Sample containerized Flask app for OpenShift
-├── openshift/
+├── ocp/
 │   └── tekton/                        # Tekton pipeline (build + deploy)
 ├── roles/
 │   ├── rhel_patching/

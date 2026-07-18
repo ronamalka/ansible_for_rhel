@@ -201,7 +201,7 @@ prod_content: "Production content deployed by Ansible"
 | Privilege Escalation | Disabled |
 | Survey enabled | Yes |
 
-Deploys the sample Flask app from `apps/demo-web/` into a survey-selected namespace. Uses Tekton (`openshift/tekton/`) when the Pipelines operator is installed; otherwise applies Deployment, Service, and Route directly. Job stdout includes `DEMO_OCP_DEPLOY_PORTAL` markers for the portal.
+Deploys the sample Flask app from `apps/demo-web/` into a survey-selected namespace. Uses Tekton (`ocp/tekton/`) when the Pipelines operator is installed; otherwise applies Deployment, Service, and Route directly. Job stdout includes `DEMO_OCP_DEPLOY_PORTAL` markers for the portal.
 
 **Survey questions:**
 
