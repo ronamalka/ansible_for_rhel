@@ -19,6 +19,7 @@ spec:
         - name: {{ app_name }}
           image: {{ openshift_app_direct_image }}
           imagePullPolicy: IfNotPresent
+          workingDir: /app
           ports:
             - containerPort: 8080
               name: http
@@ -40,14 +41,16 @@ spec:
             httpGet:
               path: /healthz
               port: 8080
-            initialDelaySeconds: 15
+            initialDelaySeconds: 60
             periodSeconds: 10
+            failureThreshold: 12
           livenessProbe:
             httpGet:
               path: /healthz
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 90
             periodSeconds: 20
+            failureThreshold: 6
       volumes:
         - name: app-source
           configMap:

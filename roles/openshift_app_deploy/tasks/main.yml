@@ -153,8 +153,8 @@
   until: >-
     openshift_app_deployment.resources | default([]) | length > 0 and
     (openshift_app_deployment.resources[0].status.readyReplicas | default(0) | int) >= 1
-  retries: "{{ (openshift_app_route_timeout / 10) | int }}"
-  delay: 10
+  retries: "{{ (openshift_app_route_timeout / 15) | int }}"
+  delay: 15
 
 - name: Read Route for application URL
   kubernetes.core.k8s_info:

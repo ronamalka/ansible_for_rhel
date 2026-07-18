@@ -14,8 +14,8 @@ openshift_app_source_configmap: demo-web-source
 openshift_app_pipeline_name: demo-web-deploy
 openshift_app_serviceaccount: demo-web-pipeline
 
-# Direct-deploy fallback image (no build required)
-openshift_app_direct_image: registry.redhat.io/ubi9/python-311:latest
+# Direct-deploy fallback image (no build required; widely pullable)
+openshift_app_direct_image: docker.io/library/python:3.12-slim
 
 # Paths relative to repo root on controller
 openshift_app_source_dir: "{{ playbook_dir }}/../apps/demo-web"
@@ -23,7 +23,7 @@ openshift_tekton_dir: "{{ playbook_dir }}/../ocp/tekton"
 
 # Timeouts
 openshift_app_pipeline_timeout: 600
-openshift_app_route_timeout: 180
+openshift_app_route_timeout: 300
 
 # K8s DNS-1123 label pattern for namespace validation
 openshift_app_namespace_pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
