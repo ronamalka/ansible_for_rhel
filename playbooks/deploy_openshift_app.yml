@@ -3,5 +3,6 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   roles:
     - openshift_app_deploy
