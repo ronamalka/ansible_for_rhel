@@ -24,6 +24,10 @@
     "16": {
       "name": "DEMO - Verify Web Application",
       "description": "Verify deployed web applications return HTTP 200 with expected content. Job stdout and the portal verify-summary template show per-node URL, HTTP status, stage, and content snippet."
+    },
+    "51": {
+      "name": "DEMO - Deploy App on OpenShift",
+      "description": "Deploy the demo web application on OpenShift in a survey-selected namespace. Uses Tekton when Pipelines is installed, otherwise nginx static HTML. Emits DEMO_OCP_DEPLOY_PORTAL markers for the portal."
     }
   },
   "workflow_job_templates": {
