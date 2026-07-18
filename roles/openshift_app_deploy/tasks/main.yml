@@ -76,7 +76,12 @@
     validate_certs: "{{ openshift_k8s_validate_certs }}"
     state: present
     namespace: "{{ target_namespace }}"
-    definition: "{{ lookup('template', 'source-configmap.yaml.j2') | from_yaml }}"
+    definition: >-
+      {{
+        lookup('template', 'source-configmap.yaml.j2') | from_yaml
+        if openshift_app_effective_method == 'tekton'
+        else lookup('template', 'web-configmap.yaml.j2') | from_yaml
+      }}
 
 - name: Install Tekton pipeline resources
   when: openshift_app_effective_method == 'tekton'
@@ -187,7 +192,7 @@
     openshift_app_deploy_name: "{{ app_name }}"
     openshift_app_deploy_url: "{{ openshift_app_route_url }}"
     openshift_app_deploy_content: >-
-      {{ openshift_app_http_check.content | regex_replace('\\s+', ' ') | truncate(120) }}
+      {{ openshift_app_http_check.content | regex_search('Hello from ' ~ target_namespace) | default(openshift_app_http_check.content) | regex_replace('\\s+', ' ') | truncate(120) }}
 
 - name: Report deploy summary for portal
   ansible.builtin.debug:

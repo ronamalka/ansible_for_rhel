@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ openshift_app_source_configmap }}
+  labels:
+    app.kubernetes.io/name: {{ app_name }}
+    app.kubernetes.io/part-of: ansible-rhel-demo
+data:
+  index.html: |
+{{ lookup('template', 'index.html.j2') | indent(4, true) }}
