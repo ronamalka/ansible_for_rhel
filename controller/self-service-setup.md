@@ -528,3 +528,47 @@ On the bastion (with `CONTROLLER_TOKEN` or `CONTROLLER_PASSWORD` set):
 - [Using self-service automation portal (AAP 2.5)](https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.5/html/using_self-service_automation_portal/)
 - [Job templates configuration](job-templates.md)
 - [Workflow setup](workflow-setup.md)
+
+## Portal catalog curation (jmvv9)
+
+The portal catalog is built from three sources:
+
+| Source | Config | Notes |
+|--------|--------|-------|
+| RHAAP job template sync | `catalog.providers.rhaap.production.sync.jobTemplates` in `redhat-rhaap-portal-app-config` | Syncs Controller job templates in org `Default` |
+| Git Location | `catalog.locations` pointing at `controller/portal-templates/catalog-info.yaml` | Custom scaffolder templates (summary launchers) |
+| Upstream sample | `ansible-rhdh-templates` EE builder URL | Optional; not tagged for demo RBAC |
+
+### Templates removed from the jmvv9 portal catalog (2026-07)
+
+These remain in **Controller** but are **not** listed in the self-service portal:
+
+| Portal title | Entity name(s) | Method |
+|--------------|----------------|--------|
+| create-volume-snapshot | `createvolumesnapshot` | Label filter on RHAAP sync + DB prune |
+| DEMO - Deploy Web Application | `demo--deploy-web-application`, `demo-deploy-web-app-summary` | Removed `demo-self-service` label from template 47; dropped custom YAML from `catalog-info.yaml`; DB prune |
+| Demo Job Template | `demo-job-template` | Label filter + DB prune |
+| DEMO - Patch RHEL Servers | `demo--patch-rhel-servers`, `demo-patch-rhel-package-summary` | Removed label from template 44; dropped custom YAML; DB prune |
+| DEMO - Verify Web Application | `demo--verify-web-application`, `demo-verify-web-app-summary` | Removed label from template 48; dropped custom YAML; DB prune |
+| patch-route-with-cert | `patchroutewithcert` | Label filter + DB prune |
+| set-resource-quota-on-namespace | `setresourcequotaonnamespace` | Label filter + DB prune |
+
+**Still in catalog:** OpenSCAP scan/remediate (45-46), seed patch demo packages (50), **DEMO - Deploy App on OpenShift (with deploy summary)** via `deploy-openshift-app-summary.yaml` only.
+
+### How to hide or restore portal templates
+
+1. **RHAAP-synced Controller templates** — only job templates with label `demo-self-service` are imported when the app-config filter is applied:
+
+   ```bash
+   export CONTROLLER_TOKEN='<token>'
+   PATCH_APP_CONFIG=1 RESTART_PORTAL=0 ./controller/prune-portal-catalog.sh
+   ```
+
+   `patch-portal-catalog-filter.py` inserts `jobTemplates.filters.labels.include: [demo-self-service]` under `catalog.providers.rhaap.production.sync`.
+
+2. **Custom summary templates** — edit `controller/portal-templates/catalog-info.yaml` targets, push to Git, then re-import the Location in the portal UI or wait for `catalog.processingInterval` (30 minutes). `orphanStrategy: delete` removes stale entities.
+
+3. **Immediate removal** — delete rows from `backstage_plugin_catalog.refresh_state` for the `template:default/...` entity ref (cascades to `final_entities`). Re-run `prune-portal-catalog.sh` for the standard removal set.
+
+4. **demo-user visibility** — `configure-portal-rbac.sh` adds a conditional catalog read policy requiring tag `demo-self-service` on catalog entities. Keep that tag on Controller labels and on custom Template YAML metadata for anything demo-user should launch.
+
