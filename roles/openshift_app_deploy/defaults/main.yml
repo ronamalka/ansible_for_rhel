@@ -15,7 +15,7 @@ openshift_app_pipeline_name: demo-web-deploy
 openshift_app_serviceaccount: demo-web-pipeline
 
 # Direct-deploy fallback image (nginx serving static HTML from ConfigMap)
-openshift_app_direct_image: docker.io/library/nginx:1.27-alpine
+openshift_app_direct_image: docker.io/nginxinc/nginx-unprivileged:1.27-alpine
 
 # Paths relative to repo root on controller
 openshift_app_source_dir: "{{ playbook_dir }}/../apps/demo-web"
