@@ -32,7 +32,7 @@ This repository configures **controller-side prerequisites** (user, team, RBAC, 
 | RHEL Demo Project | 43 |
 | Workshop Inventory | 34 |
 | Workshop Credential | 35 |
-| DEMO job templates | 44–48 |
+| DEMO job templates | 44–50 (+ OpenShift deploy when configured) |
 | DEMO workflow | 49 |
 | OAuth application | 1 |
 | demo-user (controller) | 37 |
@@ -434,7 +434,7 @@ Auto-generated **Deploy Web Application** portal templates show the same high-le
 
    `https://github.com/ronamalka/ansible_for_rhel/blob/main/controller/portal-templates/catalog-info.yaml`
 
-5. Click **Analyze** → **Import** (imports patch, deploy, and verify summary templates).
+5. Click **Analyze** → **Import** (imports patch, deploy, verify, and OpenShift deploy summary templates).
 6. Grant `demo-portal-users` catalog read on the new templates (or rely on tag filter if configured).
 
 After updating template YAML in Git, re-import or wait for catalog refresh (~30 minutes). Templates use only `rhaap:launch-job-template` — no separate stdout fetch step.
@@ -471,6 +471,28 @@ node3: url=http://127.0.0.1 | status=200 | stage=dev | content=<!DOCTYPE html> <
 ===== END DEMO VERIFY SUMMARY (portal) =====
 ```
 
+## Portal OpenShift deploy job output
+
+Auto-generated **Deploy App on OpenShift** portal templates show the same high-level scaffolder log as other DEMO tiles unless you use the custom portal template.
+
+### Approach
+
+| Layer | What it does |
+|-------|----------------|
+| `roles/openshift_app_deploy` | Validates namespace; Tekton or direct deploy; `DEMO_OCP_DEPLOY_PORTAL` marker lines |
+| `playbooks/deploy_openshift_app.yml` | Runs on `localhost` with OpenShift API credential |
+| Custom portal template | `controller/portal-templates/deploy-openshift-app-summary.yaml` — single `rhaap:launch-job-template` step |
+| Launch-logging patch | `configure-portal-launch-logging.sh` streams `DEMO_OCP_*` lines into the scaffolder step log |
+
+Presenters launch **DEMO - Deploy App on OpenShift (with deploy summary)** instead of the auto-generated tile. Deploy method, route URL, and content check appear in the **Create Task** launch step log:
+
+```
+DEMO_OCP_DEPLOY_PORTAL | namespace=demo-web-lab | app=demo-web | method=direct | url=https://demo-web-demo-web-lab.apps.cluster-jmvv9... | content=<html>...
+===== DEMO OCP DEPLOY SUMMARY (portal) =====
+namespace=demo-web-lab | app=demo-web | method=direct | url=https://demo-web-demo-web-lab.apps... | content=...
+===== END DEMO OCP DEPLOY SUMMARY (portal) =====
+```
+
 ### Sync Controller project after Git push
 
 On the bastion (with `CONTROLLER_TOKEN` or `CONTROLLER_PASSWORD` set):
@@ -496,6 +518,8 @@ On the bastion (with `CONTROLLER_TOKEN` or `CONTROLLER_PASSWORD` set):
 | Portal shows job ID only, no packages | Use custom template **DEMO - Patch RHEL Servers (with package summary)** and run `./controller/configure-portal-launch-logging.sh` on bastion |
 | Portal shows job ID only, no deploy details | Use custom template **DEMO - Deploy Web Application (with deploy summary)** and run `./controller/configure-portal-launch-logging.sh` |
 | Portal shows job ID only, no verify details | Use custom template **DEMO - Verify Web Application (with verify summary)** and run `./controller/configure-portal-launch-logging.sh` |
+| Portal shows job ID only, no OpenShift deploy details | Use custom template **DEMO - Deploy App on OpenShift (with deploy summary)** and run `./controller/configure-portal-launch-logging.sh` |
+| OpenShift deploy job fails auth | Attach **OpenShift Credentials** (id 34) to template; verify token on credential |
 | Launch log still shows only job ID/status | Re-run `./controller/configure-portal-launch-logging.sh`; confirm init container `patch-portal-launch-logging` succeeded; re-import templates from Git |
 
 ## References

@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: {{ app_name }}-deploy-{{ openshift_app_run_suffix }}
+  labels:
+    app.kubernetes.io/name: {{ app_name }}
+    app.kubernetes.io/part-of: ansible-rhel-demo
+spec:
+  pipelineRef:
+    name: {{ openshift_app_pipeline_name }}
+  params:
+    - name: namespace
+      value: {{ target_namespace | quote }}
+    - name: app-name
+      value: {{ app_name | quote }}
+    - name: source-configmap
+      value: {{ openshift_app_source_configmap | quote }}
+  workspaces:
+    - name: shared-source
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  serviceAccountName: {{ openshift_app_serviceaccount }}

@@ -1,0 +1,225 @@
+---
+- name: Validate OpenShift API credentials are available
+  ansible.builtin.assert:
+    that:
+      - openshift_k8s_host | length > 0
+      - openshift_k8s_api_key | length > 0
+    fail_msg: >-
+      OpenShift API host/token not set. Attach an OpenShift or Kubernetes API
+      Bearer Token credential to the job template.
+
+- name: Validate target namespace is DNS-safe
+  ansible.builtin.assert:
+    that:
+      - target_namespace is match(openshift_app_namespace_pattern)
+    fail_msg: >-
+      Invalid namespace '{{ target_namespace }}'. Use lowercase letters, numbers,
+      and hyphens (DNS-1123 label).
+
+- name: Normalize survey boolean for create_namespace
+  ansible.builtin.set_fact:
+    openshift_app_create_namespace: "{{ create_namespace | default(true) | bool }}"
+
+- name: Detect Tekton Pipelines CRD
+  kubernetes.core.k8s_info:
+    host: "{{ openshift_k8s_host }}"
+    api_key: "{{ openshift_k8s_api_key }}"
+    validate_certs: "{{ openshift_k8s_validate_certs }}"
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: pipelines.tekton.dev
+  register: openshift_app_tekton_crd
+  failed_when: false
+
+- name: Choose deployment method
+  ansible.builtin.set_fact:
+    openshift_app_effective_method: >-
+      {{
+        'tekton' if (deploy_method == 'tekton' or (deploy_method == 'auto' and (openshift_app_tekton_crd.resources | default([]) | length > 0)))
+        else 'direct'
+      }}
+
+- name: Report selected deployment method
+  ansible.builtin.debug:
+    msg: "DEMO_OCP_DEPLOY_PORTAL | phase=plan | method={{ openshift_app_effective_method }} | namespace={{ target_namespace }} | app={{ app_name }}"
+
+- name: Ensure target namespace exists
+  kubernetes.core.k8s:
+    host: "{{ openshift_k8s_host }}"
+    api_key: "{{ openshift_k8s_api_key }}"
+    validate_certs: "{{ openshift_k8s_validate_certs }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ target_namespace }}"
+        labels:
+          app.kubernetes.io/part-of: ansible-rhel-demo
+  when: openshift_app_create_namespace | bool
+
+- name: Verify namespace exists when not creating it
+  kubernetes.core.k8s_info:
+    host: "{{ openshift_k8s_host }}"
+    api_key: "{{ openshift_k8s_api_key }}"
+    validate_certs: "{{ openshift_k8s_validate_certs }}"
+    api_version: v1
+    kind: Namespace
+    name: "{{ target_namespace }}"
+  register: openshift_app_namespace_info
+  when: not (openshift_app_create_namespace | bool)
+
+- name: Fail when namespace is missing
+  ansible.builtin.assert:
+    that:
+      - openshift_app_namespace_info.resources | default([]) | length > 0
+    fail_msg: "Namespace '{{ target_namespace }}' does not exist and create_namespace is false."
+  when: not (openshift_app_create_namespace | bool)
+
+- name: Deploy application source ConfigMap
+  kubernetes.core.k8s:
+    host: "{{ openshift_k8s_host }}"
+    api_key: "{{ openshift_k8s_api_key }}"
+    validate_certs: "{{ openshift_k8s_validate_certs }}"
+    state: present
+    namespace: "{{ target_namespace }}"
+    definition: "{{ lookup('template', 'source-configmap.yaml.j2') | from_yaml }}"
+
+- name: Install Tekton pipeline resources
+  when: openshift_app_effective_method == 'tekton'
+  block:
+    - name: Apply Tekton RBAC
+      kubernetes.core.k8s:
+        host: "{{ openshift_k8s_host }}"
+        api_key: "{{ openshift_k8s_api_key }}"
+        validate_certs: "{{ openshift_k8s_validate_certs }}"
+        state: present
+        namespace: "{{ target_namespace }}"
+        src: "{{ openshift_tekton_dir }}/rbac.yaml"
+
+    - name: Apply Tekton pipeline and tasks
+      kubernetes.core.k8s:
+        host: "{{ openshift_k8s_host }}"
+        api_key: "{{ openshift_k8s_api_key }}"
+        validate_certs: "{{ openshift_k8s_validate_certs }}"
+        state: present
+        namespace: "{{ target_namespace }}"
+        src: "{{ openshift_tekton_dir }}/pipeline.yaml"
+
+    - name: Set PipelineRun suffix
+      ansible.builtin.set_fact:
+        openshift_app_run_suffix: "{{ lookup('pipe', 'date +%s') }}"
+
+    - name: Launch Tekton PipelineRun
+      kubernetes.core.k8s:
+        host: "{{ openshift_k8s_host }}"
+        api_key: "{{ openshift_k8s_api_key }}"
+        validate_certs: "{{ openshift_k8s_validate_certs }}"
+        state: present
+        namespace: "{{ target_namespace }}"
+        definition: "{{ lookup('template', 'pipelinerun.yaml.j2') | from_yaml }}"
+      register: openshift_app_pipelinerun
+
+    - name: Wait for Tekton PipelineRun completion
+      kubernetes.core.k8s_info:
+        host: "{{ openshift_k8s_host }}"
+        api_key: "{{ openshift_k8s_api_key }}"
+        validate_certs: "{{ openshift_k8s_validate_certs }}"
+        api_version: tekton.dev/v1
+        kind: PipelineRun
+        namespace: "{{ target_namespace }}"
+        name: "{{ app_name }}-deploy-{{ openshift_app_run_suffix }}"
+      register: openshift_app_pipelinerun_status
+      until: >-
+        openshift_app_pipelinerun_status.resources | default([]) | length > 0 and
+        (openshift_app_pipelinerun_status.resources[0].status.conditions | default([]) |
+         selectattr('type', 'equalto', 'Succeeded') | map(attribute='status') | first | default('')) in ['True', 'False']
+      retries: "{{ (openshift_app_pipeline_timeout / 10) | int }}"
+      delay: 10
+
+    - name: Fail when Tekton pipeline did not succeed
+      ansible.builtin.assert:
+        that:
+          - >-
+            openshift_app_pipelinerun_status.resources[0].status.conditions |
+            selectattr('type', 'equalto', 'Succeeded') |
+            map(attribute='status') | first | default('') == 'True'
+        fail_msg: >-
+          Tekton PipelineRun failed. Check 'oc get pipelinerun -n {{ target_namespace }}'
+          and task pod logs on the cluster.
+
+- name: Apply direct Deployment, Service, and Route
+  when: openshift_app_effective_method == 'direct'
+  kubernetes.core.k8s:
+    host: "{{ openshift_k8s_host }}"
+    api_key: "{{ openshift_k8s_api_key }}"
+    validate_certs: "{{ openshift_k8s_validate_certs }}"
+    state: present
+    namespace: "{{ target_namespace }}"
+    definition: "{{ item }}"
+  loop: "{{ lookup('template', 'direct-deploy.yaml.j2') | from_yaml_all | list }}"
+
+- name: Wait for Deployment rollout
+  kubernetes.core.k8s_info:
+    host: "{{ openshift_k8s_host }}"
+    api_key: "{{ openshift_k8s_api_key }}"
+    validate_certs: "{{ openshift_k8s_validate_certs }}"
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ target_namespace }}"
+    name: "{{ app_name }}"
+  register: openshift_app_deployment
+  until: >-
+    openshift_app_deployment.resources | default([]) | length > 0 and
+    (openshift_app_deployment.resources[0].status.readyReplicas | default(0) | int) >= 1
+  retries: "{{ (openshift_app_route_timeout / 10) | int }}"
+  delay: 10
+
+- name: Read Route for application URL
+  kubernetes.core.k8s_info:
+    host: "{{ openshift_k8s_host }}"
+    api_key: "{{ openshift_k8s_api_key }}"
+    validate_certs: "{{ openshift_k8s_validate_certs }}"
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: "{{ target_namespace }}"
+    name: "{{ app_name }}"
+  register: openshift_app_route
+
+- name: Set application route URL fact
+  ansible.builtin.set_fact:
+    openshift_app_route_url: "https://{{ openshift_app_route.resources[0].spec.host }}"
+
+- name: Verify application responds over HTTPS
+  ansible.builtin.uri:
+    url: "{{ openshift_app_route_url }}"
+    validate_certs: false
+    return_content: true
+    status_code: 200
+  register: openshift_app_http_check
+  retries: 6
+  delay: 10
+  until: openshift_app_http_check.status == 200
+
+- name: Capture deploy summary facts
+  ansible.builtin.set_fact:
+    openshift_app_deploy_method: "{{ openshift_app_effective_method }}"
+    openshift_app_deploy_namespace: "{{ target_namespace }}"
+    openshift_app_deploy_name: "{{ app_name }}"
+    openshift_app_deploy_url: "{{ openshift_app_route_url }}"
+    openshift_app_deploy_content: >-
+      {{ openshift_app_http_check.content | regex_replace('\\s+', ' ') | truncate(120) }}
+
+- name: Report deploy summary for portal
+  ansible.builtin.debug:
+    msg: >-
+      DEMO_OCP_DEPLOY_PORTAL | namespace={{ openshift_app_deploy_namespace }}
+      | app={{ openshift_app_deploy_name }} | method={{ openshift_app_deploy_method }}
+      | url={{ openshift_app_deploy_url }} | content={{ openshift_app_deploy_content }}
+
+- name: Print portal-visible deploy summary block
+  ansible.builtin.debug:
+    msg: |
+      ===== DEMO OCP DEPLOY SUMMARY (portal) =====
+      namespace={{ openshift_app_deploy_namespace }} | app={{ openshift_app_deploy_name }} | method={{ openshift_app_deploy_method }} | url={{ openshift_app_deploy_url }} | content={{ openshift_app_deploy_content }}
+      ===== END DEMO OCP DEPLOY SUMMARY (portal) =====

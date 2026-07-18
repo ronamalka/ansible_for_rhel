@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ app_name }}
+  labels:
+    app: {{ app_name }}
+    app.kubernetes.io/part-of: ansible-rhel-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ app_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ app_name }}
+    spec:
+      containers:
+        - name: {{ app_name }}
+          image: {{ openshift_app_direct_image }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NAMESPACE
+              value: {{ target_namespace | quote }}
+            - name: APP_NAME
+              value: {{ app_name | quote }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              pip install --no-cache-dir -r /app/requirements.txt
+              exec gunicorn --bind 0.0.0.0:8080 app:app
+          volumeMounts:
+            - name: app-source
+              mountPath: /app
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      volumes:
+        - name: app-source
+          configMap:
+            name: {{ openshift_app_source_configmap }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ app_name }}
+  labels:
+    app: {{ app_name }}
+spec:
+  selector:
+    app: {{ app_name }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ app_name }}
+  labels:
+    app: {{ app_name }}
+spec:
+  to:
+    kind: Service
+    name: {{ app_name }}
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

@@ -1,0 +1,138 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: demo-web-fetch-source
+  labels:
+    app.kubernetes.io/part-of: ansible-rhel-demo
+spec:
+  params:
+    - name: source-configmap
+      type: string
+      description: ConfigMap containing demo-web source files
+  workspaces:
+    - name: source
+  steps:
+    - name: copy-source
+      image: registry.redhat.io/ubi9/ubi-minimal:latest
+      script: |
+        #!/bin/sh
+        set -eu
+        cp /source/app.py /workspace/source/app.py
+        cp /source/requirements.txt /workspace/source/requirements.txt
+        cp /source/Dockerfile /workspace/source/Dockerfile
+      volumeMounts:
+        - name: source-config
+          mountPath: /source
+      workingDir: /workspace/source
+  volumes:
+    - name: source-config
+      configMap:
+        name: $(params.source-configmap)
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: demo-web-build-push
+  labels:
+    app.kubernetes.io/part-of: ansible-rhel-demo
+spec:
+  params:
+    - name: image
+      type: string
+      description: Fully qualified image reference in the internal registry
+  workspaces:
+    - name: source
+  steps:
+    - name: build-and-push
+      image: quay.io/buildah/stable:latest
+      securityContext:
+        privileged: true
+      script: |
+        #!/bin/sh
+        set -eu
+        cd /workspace/source
+        buildah bud -t $(params.image) .
+        buildah push --tls-verify=false $(params.image)
+      workingDir: /workspace/source
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: demo-web-deploy
+  labels:
+    app.kubernetes.io/part-of: ansible-rhel-demo
+spec:
+  params:
+    - name: namespace
+      type: string
+    - name: app-name
+      type: string
+    - name: image
+      type: string
+  steps:
+    - name: apply-manifests
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      script: |
+        #!/bin/sh
+        set -eu
+        NS="$(params.namespace)"
+        APP="$(params.app-name)"
+        IMG="$(params.image)"
+        oc create deployment "${APP}" \
+          --image="${IMG}" \
+          --namespace="${NS}" \
+          --dry-run=client -o yaml | oc apply -f -
+        oc set env deployment/"${APP}" NAMESPACE="${NS}" APP_NAME="${APP}" -n "${NS}"
+        oc expose deployment "${APP}" --port=8080 --target-port=8080 -n "${NS}" --dry-run=client -o yaml | oc apply -f -
+        oc expose service "${APP}" -n "${NS}" --dry-run=client -o yaml | oc apply -f -
+        oc rollout status deployment/"${APP}" -n "${NS}" --timeout=180s
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: demo-web-deploy
+  labels:
+    app.kubernetes.io/part-of: ansible-rhel-demo
+spec:
+  params:
+    - name: namespace
+      type: string
+    - name: app-name
+      type: string
+      default: demo-web
+    - name: source-configmap
+      type: string
+      default: demo-web-source
+  workspaces:
+    - name: shared-source
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: demo-web-fetch-source
+      params:
+        - name: source-configmap
+          value: $(params.source-configmap)
+      workspaces:
+        - name: source
+          workspace: shared-source
+    - name: build-push
+      runAfter: [fetch-source]
+      taskRef:
+        name: demo-web-build-push
+      params:
+        - name: image
+          value: image-registry.openshift-image-registry.svc:5000/$(params.namespace)/$(params.app-name):latest
+      workspaces:
+        - name: source
+          workspace: shared-source
+    - name: deploy
+      runAfter: [build-push]
+      taskRef:
+        name: demo-web-deploy
+      params:
+        - name: namespace
+          value: $(params.namespace)
+        - name: app-name
+          value: $(params.app-name)
+        - name: image
+          value: image-registry.openshift-image-registry.svc:5000/$(params.namespace)/$(params.app-name):latest

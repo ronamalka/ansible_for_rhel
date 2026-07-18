@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ openshift_app_source_configmap }}
+  labels:
+    app.kubernetes.io/name: {{ app_name }}
+    app.kubernetes.io/part-of: ansible-rhel-demo
+data:
+  app.py: |
+{{ lookup('file', openshift_app_source_dir + '/app.py') | indent(4, true) }}
+  requirements.txt: |
+{{ lookup('file', openshift_app_source_dir + '/requirements.txt') | indent(4, true) }}
+  Dockerfile: |
+{{ lookup('file', openshift_app_source_dir + '/Dockerfile') | indent(4, true) }}

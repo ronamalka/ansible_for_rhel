@@ -1,0 +1,74 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: demo-deploy-openshift-app-summary
+  title: DEMO - Deploy App on OpenShift (with deploy summary)
+  description: >-
+    Deploy the containerized demo web application on OpenShift in a namespace you
+    choose. Streams deploy method, route URL, and content check into the portal
+    launch step log (`DEMO_OCP_DEPLOY_PORTAL` markers).
+  tags:
+    - demo-self-service
+    - ansible
+    - openshift
+    - deployment
+spec:
+  owner: group:default/demo-self-service
+  type: service
+
+  parameters:
+    - title: OpenShift deploy options
+      required:
+        - target_namespace
+        - app_name
+        - create_namespace
+      properties:
+        target_namespace:
+          title: Target namespace
+          description: >-
+            OpenShift namespace for the deployment (lowercase, DNS-safe).
+            Created automatically when enabled below.
+          type: string
+          default: demo-web
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        app_name:
+          title: Application name
+          description: Name for Deployment, Service, and Route resources.
+          type: string
+          default: demo-web
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        create_namespace:
+          title: Create namespace if missing?
+          description: When enabled, Ansible creates the namespace before deploying.
+          type: string
+          enum:
+            - "true"
+            - "false"
+          default: "true"
+
+  steps:
+    - id: launch-job
+      name: DEMO - Deploy App on OpenShift
+      action: rhaap:launch-job-template
+      input:
+        token: ${{ secrets.aapToken }}
+        values:
+          template: DEMO - Deploy App on OpenShift
+          extraVariables:
+            target_namespace: ${{ parameters.target_namespace }}
+            app_name: ${{ parameters.app_name }}
+            create_namespace: ${{ parameters.create_namespace }}
+
+  output:
+    text:
+      - title: OpenShift deploy job completed
+        content: |
+          **Job ID:** ${{ steps['launch-job'].output.data.id }}
+          **Status:** ${{ steps['launch-job'].output.data.status }}
+
+          Namespace, route URL, and content check were streamed in the **Create Task**
+          step log above (`DEMO_OCP_DEPLOY_PORTAL` lines and the
+          `DEMO OCP DEPLOY SUMMARY` block).
+    links:
+      - title: View full job in Ansible Automation Platform
+        url: ${{ steps['launch-job'].output.data.url }}

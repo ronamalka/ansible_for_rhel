@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: demo-web-deploy-
+  labels:
+    app.kubernetes.io/part-of: ansible-rhel-demo
+spec:
+  pipelineRef:
+    name: demo-web-deploy
+  params:
+    - name: namespace
+      value: REPLACE_NAMESPACE
+    - name: app-name
+      value: REPLACE_APP_NAME
+    - name: source-configmap
+      value: REPLACE_SOURCE_CONFIGMAP
+  workspaces:
+    - name: shared-source
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  serviceAccountName: demo-web-pipeline

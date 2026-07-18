@@ -1,0 +1,35 @@
+{
+  "name": "Deploy App on OpenShift",
+  "description": "Target namespace and options for deploying the demo web application on OpenShift",
+  "spec": [
+    {
+      "question_name": "Target namespace",
+      "question_description": "OpenShift namespace to deploy into (lowercase DNS-safe name). Created automatically when enabled below.",
+      "required": true,
+      "type": "text",
+      "variable": "target_namespace",
+      "default": "demo-web",
+      "min": 1,
+      "max": 63
+    },
+    {
+      "question_name": "Application name",
+      "question_description": "Resource name for Deployment, Service, and Route (lowercase DNS-safe).",
+      "required": true,
+      "type": "text",
+      "variable": "app_name",
+      "default": "demo-web",
+      "min": 1,
+      "max": 63
+    },
+    {
+      "question_name": "Create namespace if missing?",
+      "question_description": "When true, Ansible creates the namespace before deploying.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "create_namespace",
+      "choices": ["true", "false"],
+      "default": "true"
+    }
+  ]
+}

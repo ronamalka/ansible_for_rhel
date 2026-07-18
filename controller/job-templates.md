@@ -189,6 +189,45 @@ prod_content: "Production content deployed by Ansible"
 | Ask limit on launch | Yes (use `node1` for faster demos) |
 | Privilege Escalation | Disabled |
 
+### 6. Deploy App on OpenShift
+
+| Parameter | Value |
+|-----------|-------|
+| Name | DEMO - Deploy App on OpenShift |
+| Inventory | **Demo Inventory** (id: 1 — `localhost`) |
+| Project | RHEL Demo Project |
+| Playbook | `playbooks/deploy_openshift_app.yml` |
+| Credentials | **OpenShift Credentials** (id: 34) |
+| Privilege Escalation | Disabled |
+| Survey enabled | Yes |
+
+Deploys the sample Flask app from `apps/demo-web/` into a survey-selected namespace. Uses Tekton (`openshift/tekton/`) when the Pipelines operator is installed; otherwise applies Deployment, Service, and Route directly. Job stdout includes `DEMO_OCP_DEPLOY_PORTAL` markers for the portal.
+
+**Survey questions:**
+
+| Label | Variable | Type | Default |
+|-------|----------|------|---------|
+| Target namespace | `target_namespace` | Text | `demo-web` |
+| Application name | `app_name` | Text | `demo-web` |
+| Create namespace if missing? | `create_namespace` | Multiple Choice (`true` / `false`) | `true` |
+
+Configure or update via API:
+
+```bash
+export CONTROLLER_TOKEN='<controller-token>'
+./controller/configure-openshift-deploy-template.sh
+./controller/sync-demo-project.sh
+```
+
+**Route URL pattern after deploy:**
+
+```
+https://<app_name>-<target_namespace>.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/
+```
+
+Example: `target_namespace=demo-web-lab`, `app_name=demo-web` →
+`https://demo-web-demo-web-lab.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/`
+
 ## Existing Controller Resources
 
 The environment already includes:
@@ -200,7 +239,7 @@ The environment already includes:
 | Project | Ansible official demo project → `https://github.com/RedHatGov/product-demos` |
 | Project | **RHEL Demo Project** (id: 10) → `https://github.com/ronamalka/ansible_for_rhel.git` |
 | Job Template | SECURITY / Hardening → `linux/hardening.yml` |
-| Job Templates | DEMO - Seed Patch Demo Packages, DEMO - Patch RHEL Servers (11), OpenSCAP Scan (12), OpenSCAP Remediate (13), Deploy Web Application (14), Verify Web Application (15) |
+| Job Templates | DEMO - Seed Patch Demo Packages, DEMO - Patch RHEL Servers (11), OpenSCAP Scan (12), OpenSCAP Remediate (13), Deploy Web Application (14), Verify Web Application (15), **Deploy App on OpenShift** |
 | Self-service | demo-user with Execute on templates 11–17 (see `self-service-setup.md`) |
 
 You can keep the existing hardening template for comparison alongside the DEMO templates from this repo.

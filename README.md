@@ -10,6 +10,7 @@ End-to-end demonstration of managing Red Hat Enterprise Linux servers with Ansib
 | Patching machines | In scope | `playbooks/patch_rhel.yml` |
 | OpenSCAP scan + remediation | In scope | `playbooks/openscap_scan.yml`, `openscap_remediate.yml` |
 | Application deployment | In scope | `playbooks/deploy_application.yml` |
+| OpenShift app deployment | In scope | `playbooks/deploy_openshift_app.yml`, `apps/demo-web/` |
 | Monitoring / dashboard | In scope | `monitoring/demo-narrative-first-environment.md` (4mrmx), `monitoring/demo-narrative-jmvv9-automation-dashboard.md` (jmvv9 product), `monitoring/automation-dashboard.md` |
 
 ## Environment
@@ -55,12 +56,18 @@ ansible_for_rhel/
 │   ├── openscap_scan.yml
 │   ├── openscap_remediate.yml
 │   ├── deploy_application.yml
+│   ├── deploy_openshift_app.yml
 │   ├── verify_application.yml
 │   └── site.yml                       # Full CLI pipeline
+├── apps/
+│   └── demo-web/                      # Sample containerized Flask app for OpenShift
+├── openshift/
+│   └── tekton/                        # Tekton pipeline (build + deploy)
 ├── roles/
 │   ├── rhel_patching/
 │   ├── openscap/
-│   └── web_application/
+│   ├── web_application/
+│   └── openshift_app_deploy/
 ├── controller/
 │   ├── job-templates.md               # AAP job template config
 │   ├── workflow-setup.md              # Workflow visualizer guide
@@ -216,6 +223,32 @@ curl http://rhel9.gkmvw.sandbox5326.opentlc.com    # node2 prod content
 
 **Controller:** Launch **DEMO - Deploy Web Application** with survey for content customization.
 
+### Phase 4b: OpenShift Application Deployment (~3-5 min)
+
+**Story:** Deploy a containerized demo web app on OpenShift in a namespace chosen at launch time.
+
+```bash
+# Requires OpenShift API token and kubernetes.core collection
+export host="https://api.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com:6443"
+export oauth_token="<openshift-token>"
+ansible-playbook playbooks/deploy_openshift_app.yml \
+  -e target_namespace=demo-web-lab -e app_name=demo-web -e create_namespace=true
+```
+
+**What happens:**
+1. Validates namespace name (DNS-1123)
+2. Creates namespace when `create_namespace=true`
+3. Uses Tekton pipeline when OpenShift Pipelines is installed; otherwise applies Deployment/Service/Route directly
+4. Waits for Route and verifies `Hello from <namespace>` over HTTPS
+
+**Route URL pattern:**
+
+```
+https://<app_name>-<target_namespace>.apps.cluster-jmvv9.jmvv9.sandbox3400.opentlc.com/
+```
+
+**Controller:** Launch **DEMO - Deploy App on OpenShift** (Demo Inventory + OpenShift credential). See `controller/job-templates.md`.
+
 ### Phase 5: Verification (~1 min)
 
 ```bash
@@ -302,7 +335,7 @@ Configured on the OpenTLC full AAP + OpenShift lab:
 | Project | **RHEL Demo Project** (id: 43) → GitHub repo |
 | Inventory | **Workshop Inventory** (id: 34) — hosts node1, node2 (`ansible_host` = OpenTLC FQDNs) |
 | Credential | **Workshop Credential** (id: 35) — `lab-user` + bastion automation private key |
-| Job templates | DEMO Seed (50), Patch (44), Scan (45), Remediate (46), Deploy (47), Verify (48) |
+| Job templates | DEMO Seed (50), Patch (44), Scan (45), Remediate (46), Deploy (47), Verify (48), **OpenShift Deploy** |
 | Workflow | **DEMO - RHEL Operations Pipeline** (id: 49) — Seed → Patch → … |
 | Self-service | demo-user with Execute on templates 44–50 and workflow 49 |
 | OAuth app | **Ansible Automation Portal** (id: 1) — redirect URI set to portal route |
@@ -369,6 +402,10 @@ For a shorter demo, skip remediation or limit to a single host with `--limit nod
 | `stage` | `dev` (group), `prod` (node2) | Environment label for web content |
 | `dev_content` | See group_vars | Development page body text |
 | `prod_content` | See group_vars | Production page body text |
+| `target_namespace` | `demo-web` | OpenShift namespace (OpenShift deploy survey) |
+| `app_name` | `demo-web` | OpenShift resource name (OpenShift deploy survey) |
+| `create_namespace` | `true` | Create OpenShift namespace before deploy |
+| `deploy_method` | `auto` | `auto`, `tekton`, or `direct` (playbook extra var) |
 
 ## Troubleshooting
 
