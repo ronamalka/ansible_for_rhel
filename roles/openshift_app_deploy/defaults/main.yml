@@ -1,8 +1,7 @@
 ---
-# OpenShift API connection (injected by AAP OpenShift credential when attached to job template)
-openshift_k8s_host: "{{ host | default('') }}"
-openshift_k8s_api_key: "{{ oauth_token | default('') }}"
-openshift_k8s_validate_certs: false
+# OpenShift API connection — AAP injects K8S_AUTH_* env vars from the OpenShift credential.
+# For CLI runs, pass -e host=... -e bearer_token=...
+openshift_k8s_validate_certs: "{{ verify_ssl | default(false) | bool }}"
 
 # Application settings (survey overrides)
 target_namespace: demo-web
